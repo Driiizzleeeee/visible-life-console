@@ -947,6 +947,10 @@ function RoutineManager({ data, setData }: { data: AppData; setData: React.Dispa
   const [weeklyTarget, setWeeklyTarget] = useState('2')
   const [historyDate, setHistoryDate] = useState(localDate())
   const [essentialTitle, setEssentialTitle] = useState('')
+  type ReorderGroup = 'daily' | 'weekly' | 'essential'
+  const [draggedItem, setDraggedItem] = useState<{ id: string; group: ReorderGroup }>()
+  const draggedItemRef = useRef<{ id: string; group: ReorderGroup }>()
+  const [dropTarget, setDropTarget] = useState<{ id: string; group: ReorderGroup; position: 'before' | 'after' }>()
 
   function addDailyRoutine(event: FormEvent) {
     event.preventDefault()
@@ -989,6 +993,84 @@ function RoutineManager({ data, setData }: { data: AppData; setData: React.Dispa
       routineTasks: current.routineTasks.filter((item) => item.id !== task.id),
       routineCompletions: current.routineCompletions.filter((item) => item.taskId !== task.id),
     }))
+  }
+
+  function reorderItem(group: ReorderGroup, targetId: string, position: 'before' | 'after') {
+    const activeDrag = draggedItemRef.current ?? draggedItem
+    if (!activeDrag || activeDrag.group !== group || activeDrag.id === targetId) {
+      draggedItemRef.current = undefined
+      setDraggedItem(undefined)
+      setDropTarget(undefined)
+      return
+    }
+    setData((current) => {
+      if (group === 'essential') {
+        const moving = current.essentialTasks.find((task) => task.id === activeDrag.id)
+        if (!moving) return current
+        const reordered = current.essentialTasks.filter((task) => task.id !== activeDrag.id)
+        const targetIndex = reordered.findIndex((task) => task.id === targetId)
+        if (targetIndex < 0) return current
+        reordered.splice(targetIndex + (position === 'after' ? 1 : 0), 0, moving)
+        return { ...current, essentialTasks: reordered }
+      }
+
+      const frequency = group === 'daily' ? 'daily' : 'weekly'
+      const moving = current.routineTasks.find((task) => task.id === activeDrag.id && task.frequency === frequency)
+      if (!moving) return current
+      const reorderedGroup = current.routineTasks.filter((task) => task.frequency === frequency && task.id !== activeDrag.id)
+      const targetIndex = reorderedGroup.findIndex((task) => task.id === targetId)
+      if (targetIndex < 0) return current
+      reorderedGroup.splice(targetIndex + (position === 'after' ? 1 : 0), 0, moving)
+      let groupIndex = 0
+      return {
+        ...current,
+        routineTasks: current.routineTasks.map((task) => task.frequency === frequency ? reorderedGroup[groupIndex++] : task),
+      }
+    })
+    draggedItemRef.current = undefined
+    setDraggedItem(undefined)
+    setDropTarget(undefined)
+  }
+
+  function reorderEvents(group: ReorderGroup, taskId: string) {
+    return {
+      onDragOver: (event: React.DragEvent<HTMLDivElement>) => {
+        if (!draggedItem || draggedItem.group !== group || draggedItem.id === taskId) return
+        event.preventDefault()
+        const bounds = event.currentTarget.getBoundingClientRect()
+        const position = event.clientY < bounds.top + bounds.height / 2 ? 'before' as const : 'after' as const
+        setDropTarget({ id: taskId, group, position })
+      },
+      onDrop: (event: React.DragEvent<HTMLDivElement>) => {
+        event.preventDefault()
+        const bounds = event.currentTarget.getBoundingClientRect()
+        reorderItem(group, taskId, event.clientY < bounds.top + bounds.height / 2 ? 'before' : 'after')
+      },
+    }
+  }
+
+  function dragHandle(group: ReorderGroup, taskId: string, title: string) {
+    return <span
+      className="drag-handle"
+      draggable
+      role="button"
+      tabIndex={0}
+      aria-label={`Drag to reorder ${title}`}
+      title="Drag to reorder"
+      onDragStart={(event) => {
+        event.dataTransfer.effectAllowed = 'move'
+        event.dataTransfer.setData('text/plain', taskId)
+        const activeDrag = { id: taskId, group }
+        draggedItemRef.current = activeDrag
+        setDraggedItem(activeDrag)
+      }}
+      onDragEnd={() => { draggedItemRef.current = undefined; setDraggedItem(undefined); setDropTarget(undefined) }}
+    ><span className="drag-grip" aria-hidden="true">{Array.from({ length: 6 }, (_, index) => <i key={index} />)}</span><span>Drag</span></span>
+  }
+
+  function reorderClass(group: ReorderGroup, taskId: string) {
+    const targetClass = dropTarget?.group === group && dropTarget.id === taskId ? ` drop-${dropTarget.position}` : ''
+    return `reorderable-definition${draggedItem?.group === group && draggedItem.id === taskId ? ' dragging' : ''}${targetClass}`
   }
 
   function dailyComplete(taskId: string) {
@@ -1046,7 +1128,8 @@ function RoutineManager({ data, setData }: { data: AppData; setData: React.Dispa
         <div className="card-heading"><div><span className="number">01</span><h2>Daily tasks</h2></div><span className="count-pill">{daily.length} tasks</span></div>
         <p className="routine-manager-detail">One check per day. Each new day starts unchecked.</p>
         <form className="routine-group-create" onSubmit={addDailyRoutine}><input value={dailyTitle} onChange={(event) => setDailyTitle(event.target.value)} placeholder="New daily task" /><button className="primary">Add daily</button></form>
-        {daily.length === 0 ? <p className="quiet">No daily tasks yet.</p> : <div className="routine-manager-list">{daily.map((task) => <div className="daily-definition" key={task.id}>
+        {daily.length === 0 ? <p className="quiet">No daily tasks yet.</p> : <div className="routine-manager-list">{daily.map((task) => <div className={`daily-definition ${reorderClass('daily', task.id)}`} key={task.id} {...reorderEvents('daily', task.id)}>
+          {dragHandle('daily', task.id, task.title)}
           <input aria-label={`${task.title} name`} value={task.title} onChange={(event) => updateRoutine(task.id, { title: event.target.value })} />
           <button aria-label={`Delete ${task.title}`} onClick={() => removeRoutine(task)}>Delete</button>
         </div>)}</div>}
@@ -1055,7 +1138,8 @@ function RoutineManager({ data, setData }: { data: AppData; setData: React.Dispa
         <div className="card-heading"><div><span className="number">02</span><h2>Weekly targets</h2></div><span className="count-pill">{weekly.length} tasks</span></div>
         <p className="routine-manager-detail">Set how many times per week. No fixed weekday is required.</p>
         <form className="routine-group-create weekly-create" onSubmit={addWeeklyRoutine}><input value={weeklyTitle} onChange={(event) => setWeeklyTitle(event.target.value)} placeholder="New weekly task" /><label><input type="number" min="1" value={weeklyTarget} onChange={(event) => setWeeklyTarget(event.target.value)} /><span>times / week</span></label><button className="primary">Add weekly</button></form>
-        {weekly.length === 0 ? <p className="quiet">No weekly targets yet.</p> : <div className="routine-manager-list">{weekly.map((task) => <div className="weekly-definition" key={task.id}>
+        {weekly.length === 0 ? <p className="quiet">No weekly targets yet.</p> : <div className="routine-manager-list">{weekly.map((task) => <div className={`weekly-definition ${reorderClass('weekly', task.id)}`} key={task.id} {...reorderEvents('weekly', task.id)}>
+          {dragHandle('weekly', task.id, task.title)}
           <input aria-label={`${task.title} name`} value={task.title} onChange={(event) => updateRoutine(task.id, { title: event.target.value })} />
           <label><input aria-label={`${task.title} target per week`} type="number" min="1" value={task.weeklyTarget ?? 1} onChange={(event) => updateRoutine(task.id, { weeklyTarget: Math.max(1, Number(event.target.value) || 1) })} /><span>/ week</span></label>
           <button aria-label={`Delete ${task.title}`} onClick={() => removeRoutine(task)}>Delete</button>
@@ -1066,7 +1150,7 @@ function RoutineManager({ data, setData }: { data: AppData; setData: React.Dispa
       <div className="card-heading"><div><span className="number">03</span><h2>Daily essentials</h2></div><span className="count-pill">{data.essentialTasks.length} essentials</span></div>
       <p className="routine-manager-detail">A small daily finish line. Completing every item reveals the “enough for today” banner.</p>
       <form className="routine-group-create" onSubmit={addEssential}><input value={essentialTitle} onChange={(event) => setEssentialTitle(event.target.value)} placeholder="e.g. IELTS study" /><button className="primary">Add essential</button></form>
-      {data.essentialTasks.length === 0 ? <p className="quiet">No essentials yet.</p> : <div className="routine-manager-list">{data.essentialTasks.map((task) => <div className="daily-definition" key={task.id}><input value={task.title} onChange={(event) => updateEssential(task.id, event.target.value)} /><button onClick={() => removeEssential(task.id)}>Delete</button></div>)}</div>}
+      {data.essentialTasks.length === 0 ? <p className="quiet">No essentials yet.</p> : <div className="routine-manager-list">{data.essentialTasks.map((task) => <div className={`daily-definition ${reorderClass('essential', task.id)}`} key={task.id} {...reorderEvents('essential', task.id)}>{dragHandle('essential', task.id, task.title)}<input value={task.title} onChange={(event) => updateEssential(task.id, event.target.value)} /><button onClick={() => removeEssential(task.id)}>Delete</button></div>)}</div>}
     </article>
     <article className="card routine-history-card">
       <div className="card-heading history-heading"><div><span className="number">04</span><h2>Daily record</h2></div><div className="history-date-controls"><button aria-label="Previous day" onClick={() => moveHistoryDate(-1)}>‹</button><input aria-label="Record date" type="date" max={localDate()} value={historyDate} onChange={(event) => setHistoryDate(event.target.value)} /><button aria-label="Next day" disabled={historyDate >= localDate()} onClick={() => moveHistoryDate(1)}>›</button><button onClick={() => setHistoryDate(localDate())}>Today</button></div></div>
