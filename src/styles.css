@@ -83,7 +83,11 @@ main { max-width: 1760px; margin: auto; padding: 50px 24px 80px; }
 .motto-card { padding: 18px; border: 1px solid #32464e; border-radius: 18px; background: #304249; color: white; box-shadow: 0 12px 35px rgba(38,52,58,.09); }
 .motto-card-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .motto-card-heading button { padding: 0; border: 0; background: none; color: #bdd0da; cursor: pointer; font-size: 9px; font-weight: 750; }
-.motto-card blockquote { margin: 18px 0 15px; font: 700 17px/1.45 'Segoe UI', sans-serif; letter-spacing: -.015em; overflow-wrap: anywhere; }
+.motto-card blockquote { min-height: 50px; display: grid; place-items: center; margin: 18px 0 15px; font: 600 21px/1.45 'Segoe UI', sans-serif; letter-spacing: -.015em; overflow-wrap: anywhere; text-align: center; }
+.motto-text-content { max-width: 100%; white-space: pre-wrap; }
+.motto-card blockquote strong { color: #fff; font-weight: 800; }
+.motto-card blockquote.motto-text-medium { font-size: 19px; line-height: 1.48; }
+.motto-card blockquote.motto-text-long { font-size: 18px; line-height: 1.52; }
 .motto-card > small { display: block; padding-top: 11px; border-top: 1px solid rgba(255,255,255,.12); color: #aeb2aa; font-size: 8px; line-height: 1.4; }
 .motto-empty { display: grid; gap: 5px; margin-top: 16px; }
 .motto-empty strong { font: 700 14px 'Segoe UI', sans-serif; }
@@ -413,6 +417,7 @@ label input, label select, label textarea { display: block; margin-top: 6px; }
 .motto-list-empty strong { color: var(--ink); }
 .motto-list-empty span { font-size: 10px; }
 .motto-rule-note { margin: 22px 0 0; padding: 13px 15px; border-radius: 9px; background: #edf4f0; color: #52645b; font-size: 9px; line-height: 1.55; }
+.motto-rule-note code { padding: 1px 4px; border-radius: 4px; background: #dfe9e3; color: #315d4d; font-size: inherit; }
 .boards-hero { margin-bottom: 25px; }
 .board-create-card { margin-bottom: 14px; }
 .board-create-card form { display: grid; grid-template-columns: minmax(0, 1fr) 180px auto; gap: 8px; }

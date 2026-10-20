@@ -37,6 +37,22 @@ function formatMinutes(minutes: number) {
   return [hours ? `${hours}h` : '', rest ? `${rest}m` : ''].filter(Boolean).join(' ')
 }
 
+function renderMottoText(text: string) {
+  return text.split(/(\*\*[\s\S]+?\*\*)/g).filter(Boolean).map((part, index) =>
+    part.startsWith('**') && part.endsWith('**')
+      ? <strong key={index}>{part.slice(2, -2)}</strong>
+      : <span key={index}>{part}</span>,
+  )
+}
+
+function mottoLengthClass(text: string) {
+  const visibleLength = text.replace(/\*\*/g, '').length
+  const lineCount = text.split(/\r?\n/).length
+  if (visibleLength > 150 || lineCount > 5) return 'motto-text-long'
+  if (visibleLength > 75 || lineCount > 3) return 'motto-text-medium'
+  return 'motto-text-short'
+}
+
 function taskChildren(tasks: StockTask[], parentId?: string) {
   return tasks.filter((task) => task.parentId === parentId)
 }
@@ -318,7 +334,7 @@ function Dashboard({
     <div className="dashboard-sidebar-stack">
       <aside className="motto-card">
         <div className="motto-card-heading"><p className="eyebrow">Words for today</p><button onClick={openMottos}>Manage</button></div>
-        {todayMotto ? <blockquote>“{todayMotto.text}”</blockquote> : <div className="motto-empty"><strong>Your wall, without the wall.</strong><span>Add a motto and one will appear here each day.</span></div>}
+        {todayMotto ? <blockquote className={mottoLengthClass(todayMotto.text)}><span className="motto-text-content">“{renderMottoText(todayMotto.text)}”</span></blockquote> : <div className="motto-empty"><strong>Your wall, without the wall.</strong><span>Add a motto and one will appear here each day.</span></div>}
       </aside>
       <RoutineSidebar data={data} setData={setData} openManager={openRoutines} />
       <aside className={`essential-card ${essentialsComplete ? 'complete' : ''}`}>
@@ -1303,9 +1319,9 @@ function MottoManager({ data, setData }: { data: AppData; setData: React.Dispatc
     <section className="hero-row mottos-hero"><div><p className="eyebrow">Mottos</p><h1>Keep the words in view.</h1><p className="muted">One motto appears on the Dashboard each day. Every motto is shown once before the order is shuffled again.</p></div></section>
     <article className="card motto-manager-card">
       <div className="card-heading"><div><span className="number">01</span><h2>Your motto collection</h2></div><span className="count-pill">{data.mottos.length} mottos</span></div>
-      <form className="motto-create-form" onSubmit={addMotto}><textarea rows={2} value={text} onChange={(event) => setText(event.target.value)} placeholder="Add a sentence you want to see again…" /><button className="primary">Add motto</button></form>
+      <form className="motto-create-form" onSubmit={addMotto}><textarea rows={3} value={text} onChange={(event) => setText(event.target.value)} placeholder={'Add a motto…\nLine breaks are preserved. Use **text** for bold.'} /><button className="primary">Add motto</button></form>
       {data.mottos.length === 0 ? <div className="motto-list-empty"><strong>No mottos yet.</strong><span>Move the reminders from your wall into the field above.</span></div> : <div className="motto-manager-list">{data.mottos.map((motto, index) => <div key={motto.id}><span>{String(index + 1).padStart(2, '0')}</span><textarea aria-label={`Motto ${index + 1}`} rows={2} value={motto.text} onChange={(event) => updateMotto(motto.id, event.target.value)} /><button onClick={() => removeMotto(motto)}>Delete</button></div>)}</div>}
-      <p className="motto-rule-note"><strong>Rotation rule:</strong> the app uses every motto once per cycle, in a shuffled order. With at least five mottos, the same one will not appear within the previous four days. A new or deleted motto safely starts a fresh cycle.</p>
+      <p className="motto-rule-note"><strong>Formatting:</strong> line breaks and blank lines are preserved. Wrap words in <code>**double asterisks**</code> to make them bold.<br /><strong>Rotation rule:</strong> the app uses every motto once per cycle, in a shuffled order. With at least five mottos, the same one will not appear within the previous four days. A new or deleted motto safely starts a fresh cycle.</p>
     </article>
   </>
 }
