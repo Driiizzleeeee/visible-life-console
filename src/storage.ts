@@ -4,7 +4,7 @@ const STORAGE_KEY = 'visible-life-console-v1'
 const LEGACY_STORAGE_KEY = 'visible-dashboard-v1'
 
 export const emptyData: AppData = {
-  version: 10,
+  version: 11,
   categories: DEFAULT_PROJECT_CATEGORIES.map((category) => ({ ...category })),
   projects: [],
   activities: [],
@@ -20,6 +20,9 @@ export const emptyData: AppData = {
   essentialTasks: [],
   essentialCompletions: [],
   boards: [],
+  monthlyLifeItems: [],
+  somedayDreams: [],
+  lifeMoments: [],
 }
 
 export function loadData(): AppData {
@@ -65,7 +68,7 @@ export function downloadCsv(data: AppData) {
 export function parseBackup(text: string): AppData {
   const parsed = JSON.parse(text) as Partial<AppData> & { version?: number }
   if (
-    ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10].includes(parsed.version ?? 0) ||
+    ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].includes(parsed.version ?? 0) ||
     !Array.isArray(parsed.projects) ||
     !Array.isArray(parsed.activities) ||
     !Array.isArray(parsed.priorities) ||
@@ -79,7 +82,7 @@ export function parseBackup(text: string): AppData {
 function migrateData(value: unknown): AppData {
   const parsed = value as Partial<AppData> & { version?: number; projects?: Array<AppData['projects'][number] & { categoryId?: string }> }
   if (
-    ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10].includes(parsed.version ?? 0) ||
+    ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].includes(parsed.version ?? 0) ||
     !Array.isArray(parsed.projects) ||
     !Array.isArray(parsed.activities) ||
     !Array.isArray(parsed.priorities) ||
@@ -88,7 +91,7 @@ function migrateData(value: unknown): AppData {
 
   return {
     ...parsed,
-    version: 10,
+    version: 11,
     categories: Array.isArray(parsed.categories) && parsed.categories.length > 0
       ? parsed.categories
       : DEFAULT_PROJECT_CATEGORIES.map((category) => ({ ...category })),
@@ -133,6 +136,9 @@ function migrateData(value: unknown): AppData {
       ? parsed.essentialCompletions.filter((completion) => parsed.essentialTasks?.some((task) => task.id === completion.taskId))
       : [],
     boards: Array.isArray(parsed.boards) ? parsed.boards : [],
+    monthlyLifeItems: Array.isArray(parsed.monthlyLifeItems) ? parsed.monthlyLifeItems : [],
+    somedayDreams: Array.isArray(parsed.somedayDreams) ? parsed.somedayDreams : [],
+    lifeMoments: Array.isArray(parsed.lifeMoments) ? parsed.lifeMoments : [],
   }
 }
 
