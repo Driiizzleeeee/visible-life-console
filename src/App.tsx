@@ -68,13 +68,21 @@ function descendantIds(tasks: StockTask[], taskId: string): Set<string> {
   return result
 }
 
+function loggedMinutes(task: StockTask) {
+  return task.worklogs.reduce((sum, log) => sum + log.minutes, 0)
+}
+
+function calculatedRemaining(task: StockTask) {
+  return task.completed ? 0 : Math.max(0, Math.max(1, task.estimateMinutes || 60) - loggedMinutes(task))
+}
+
 function taskMetrics(tasks: StockTask[], rootId?: string) {
   const scope = rootId ? descendantIds(tasks, rootId) : new Set(tasks.map((task) => task.id))
   const scopedTasks = tasks.filter((task) => scope.has(task.id))
   const leaves = scopedTasks.filter((task) => !tasks.some((child) => child.parentId === task.id))
   const estimated = leaves.reduce((sum, task) => sum + Math.max(1, task.estimateMinutes || 60), 0)
   const spent = scopedTasks.reduce((sum, task) => sum + task.worklogs.reduce((total, log) => total + log.minutes, 0), 0)
-  const remaining = leaves.reduce((sum, task) => sum + (task.completed ? 0 : Math.max(0, task.remainingEstimateMinutes)), 0)
+  const remaining = leaves.reduce((sum, task) => sum + calculatedRemaining(task), 0)
   const completedWeight = leaves.reduce((sum, task) => sum + (task.completed ? Math.max(1, task.estimateMinutes || 60) : 0), 0)
   return { estimated, spent, remaining, completedWeight, percent: estimated ? Math.round(completedWeight / estimated * 100) : 0, leafCount: leaves.length }
 }
@@ -1434,7 +1442,7 @@ function Manage({ data, setData, setNotice }: { data: AppData; setData: React.Di
         ...item,
         completed: completing,
         completedAt: completing ? localDate() : undefined,
-        remainingEstimateMinutes: completing ? 0 : item.remainingEstimateMinutes || item.estimateMinutes,
+        remainingEstimateMinutes: completing ? 0 : calculatedRemaining({ ...item, completed: false }),
       } : item)
       return { ...tracker, tasks: syncParentTasks(tasks) }
     }) }) }))
@@ -1770,21 +1778,27 @@ function ProjectEditor({ project, categories, addTracker, addTask, toggleTask, s
   }
 
   function addTaskWorklog(trackerId: string, taskId: string, minutes: number, date: string, note: string) {
-    updateTracker(trackerId, (tasks) => tasks.map((task) => task.id === taskId ? {
-      ...task,
-      worklogs: [...task.worklogs, { id: id(), date, minutes: Math.max(1, Math.round(minutes)), note: note.trim() || undefined }],
-    } : task))
+    updateTracker(trackerId, (tasks) => tasks.map((task) => {
+      if (task.id !== taskId) return task
+      const worklogs = [...task.worklogs, { id: id(), date, minutes: Math.max(1, Math.round(minutes)), note: note.trim() || undefined }]
+      return { ...task, worklogs, remainingEstimateMinutes: task.completed ? 0 : Math.max(0, task.estimateMinutes - worklogs.reduce((sum, log) => sum + log.minutes, 0)) }
+    }))
   }
 
   function updateTaskWorklog(trackerId: string, taskId: string, worklogId: string, patch: Partial<TaskWorklog>) {
-    updateTracker(trackerId, (tasks) => tasks.map((task) => task.id === taskId ? {
-      ...task,
-      worklogs: task.worklogs.map((log) => log.id === worklogId ? { ...log, ...patch } : log),
-    } : task))
+    updateTracker(trackerId, (tasks) => tasks.map((task) => {
+      if (task.id !== taskId) return task
+      const worklogs = task.worklogs.map((log) => log.id === worklogId ? { ...log, ...patch } : log)
+      return { ...task, worklogs, remainingEstimateMinutes: task.completed ? 0 : Math.max(0, task.estimateMinutes - worklogs.reduce((sum, log) => sum + log.minutes, 0)) }
+    }))
   }
 
   function deleteTaskWorklog(trackerId: string, taskId: string, worklogId: string) {
-    updateTracker(trackerId, (tasks) => tasks.map((task) => task.id === taskId ? { ...task, worklogs: task.worklogs.filter((log) => log.id !== worklogId) } : task))
+    updateTracker(trackerId, (tasks) => tasks.map((task) => {
+      if (task.id !== taskId) return task
+      const worklogs = task.worklogs.filter((log) => log.id !== worklogId)
+      return { ...task, worklogs, remainingEstimateMinutes: task.completed ? 0 : Math.max(0, task.estimateMinutes - worklogs.reduce((sum, log) => sum + log.minutes, 0)) }
+    }))
   }
 
   function addSupportWork(event: FormEvent) {
@@ -1823,7 +1837,7 @@ function ProjectEditor({ project, categories, addTracker, addTask, toggleTask, s
     <div className="project-metric-grid">
       <div className="primary-metric"><span>Delivery progress</span><strong>{metrics.percent}%</strong><small>Completed estimated weight</small></div>
       <div><span>Total invested</span><strong>{formatMinutes(metrics.totalSpent)}</strong><small>Direct + supporting work</small></div>
-      <div><span>Delivery remaining</span><strong>{formatMinutes(metrics.remaining)}</strong><small>Editable current forecast</small></div>
+      <div><span>Delivery remaining</span><strong>{formatMinutes(metrics.remaining)}</strong><small>Estimate minus logged actual time</small></div>
       <div><span>Supporting work</span><strong>{formatMinutes(metrics.supportSpent)}</strong><small>Does not change progress</small></div>
     </div>
     <div className="project-progress-overview"><div><span style={{ width: `${metrics.percent}%`, background: project.color }} /></div><p><strong>{formatMinutes(metrics.estimated)}</strong> delivery estimate · <strong>{metrics.leafCount}</strong> leaf task{metrics.leafCount === 1 ? '' : 's'}</p></div>
@@ -1840,8 +1854,8 @@ function ProjectEditor({ project, categories, addTracker, addTask, toggleTask, s
           </div>
           <div className="task-time-summary">
             <span><small>Estimated</small><strong>{formatMinutes(trackerMetrics.estimated)}</strong></span>
-            <span><small>Actual</small><strong>{formatMinutes(trackerMetrics.spent)}</strong></span>
             <span><small>Remaining</small><strong>{formatMinutes(trackerMetrics.remaining)}</strong></span>
+            <span><small>Actual</small><strong>{formatMinutes(trackerMetrics.spent)}</strong></span>
             <span><small>Project weight</small><strong>{metrics.estimated ? Math.round(trackerMetrics.estimated / metrics.estimated * 100) : 0}%</strong></span>
           </div>
 
@@ -1888,6 +1902,40 @@ function ProjectEditor({ project, categories, addTracker, addTask, toggleTask, s
   </section>
 }
 
+function DeferredNumberInput({ value, min = 0, ariaLabel, onCommit }: {
+  value: number
+  min?: number
+  ariaLabel: string
+  onCommit: (value: number) => void
+}) {
+  const [draft, setDraft] = useState(String(value))
+  useEffect(() => setDraft(String(value)), [value])
+
+  function commit() {
+    if (draft.trim() === '') {
+      setDraft(String(value))
+      return
+    }
+    const parsed = Math.max(min, Math.round(Number(draft)))
+    if (!Number.isFinite(parsed)) {
+      setDraft(String(value))
+      return
+    }
+    onCommit(parsed)
+    setDraft(String(parsed))
+  }
+
+  return <input
+    aria-label={ariaLabel}
+    type="number"
+    min={min}
+    value={draft}
+    onChange={(event) => setDraft(event.target.value)}
+    onBlur={commit}
+    onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur() }}
+  />
+}
+
 function TaskNode({ task, tasks, depth, trackerId, projectId, projectEstimate, addTask, toggleTask, updateTask, deleteTask, addWorklog, updateWorklog, deleteWorklog }: {
   task: StockTask
   tasks: StockTask[]
@@ -1911,6 +1959,22 @@ function TaskNode({ task, tasks, depth, trackerId, projectId, projectEstimate, a
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [subtaskTitle, setSubtaskTitle] = useState('')
   const [subtaskEstimate, setSubtaskEstimate] = useState(String(task.estimateMinutes || 60))
+  const [quickActual, setQuickActual] = useState('')
+
+  function updateEstimate(estimateMinutes: number) {
+    updateTask(trackerId, task.id, {
+      estimateMinutes,
+      remainingEstimateMinutes: task.completed ? 0 : Math.max(0, estimateMinutes - loggedMinutes(task)),
+    })
+  }
+
+  function logActual(event: FormEvent) {
+    event.preventDefault()
+    const minutes = Math.round(Number(quickActual))
+    if (!Number.isFinite(minutes) || minutes < 1) return
+    addWorklog(trackerId, task.id, minutes, localDate(), '')
+    setQuickActual('')
+  }
 
   return <div className={`task-node ${task.completed ? 'complete' : ''}`} style={{ marginLeft: depth > 0 ? '14px' : 0 }}>
     <div className="task-node-main redesigned-task-main">
@@ -1924,10 +1988,11 @@ function TaskNode({ task, tasks, depth, trackerId, projectId, projectEstimate, a
     </div>
 
     <div className="task-node-metrics">
-      {hasChildren ? <><span>Estimated <b>{formatMinutes(metrics.estimated)}</b></span><span>Actual <b>{formatMinutes(metrics.spent)}</b></span><span>Remaining <b>{formatMinutes(metrics.remaining)}</b></span><span>Progress <b>{metrics.percent}%</b></span></> : <>
-        <label>Estimate <input aria-label={`${task.title} estimate minutes`} type="number" min="1" value={task.estimateMinutes} onChange={(event) => { const estimateMinutes = Math.max(1, Number(event.target.value) || 1); updateTask(trackerId, task.id, { estimateMinutes, remainingEstimateMinutes: task.remainingEstimateMinutes === task.estimateMinutes ? estimateMinutes : task.remainingEstimateMinutes }) }} /> min</label>
+      {hasChildren ? <><span>Estimated <b>{formatMinutes(metrics.estimated)}</b></span><span>Remaining <b>{formatMinutes(metrics.remaining)}</b></span><span>Actual <b>{formatMinutes(metrics.spent)}</b></span><span>Progress <b>{metrics.percent}%</b></span></> : <>
+        <label>Estimate <DeferredNumberInput ariaLabel={`${task.title} estimate minutes`} min={1} value={task.estimateMinutes} onCommit={updateEstimate} /> min</label>
+        <span>Remaining <b>{formatMinutes(metrics.remaining)}</b></span>
         <span>Actual <b>{formatMinutes(metrics.spent)}</b></span>
-        <label>Remaining <input aria-label={`${task.title} remaining minutes`} type="number" min="0" value={task.remainingEstimateMinutes} disabled={task.completed} onChange={(event) => updateTask(trackerId, task.id, { remainingEstimateMinutes: Math.max(0, Number(event.target.value) || 0) })} /> min</label>
+        <form className="quick-actual-form" onSubmit={logActual}><label>Log actual <input aria-label={`${task.title} new actual minutes`} type="number" min="1" value={quickActual} onChange={(event) => setQuickActual(event.target.value)} placeholder="min" /></label><button>Add</button></form>
       </>}
     </div>
 
@@ -1967,7 +2032,7 @@ function EditableWorklogs({ logs, onAdd, onUpdate, onDelete }: {
     {logs.length > 0 && <div className="editable-worklog-list">{logs.map((log) => <div key={log.id}>
       <input aria-label="Recorded date" type="date" value={log.date} onChange={(event) => onUpdate(log.id, { date: event.target.value })} />
       <input aria-label="Time record note" value={log.note ?? ''} onChange={(event) => onUpdate(log.id, { note: event.target.value })} placeholder="No note" />
-      <label><input aria-label="Recorded minutes" type="number" min="1" value={log.minutes} onChange={(event) => onUpdate(log.id, { minutes: Math.max(1, Number(event.target.value) || 1) })} /> min</label>
+      <label><DeferredNumberInput ariaLabel="Recorded minutes" min={1} value={log.minutes} onCommit={(minutes) => onUpdate(log.id, { minutes })} /> min</label>
       <button aria-label={`Delete ${formatMinutes(log.minutes)} time record`} onClick={() => onDelete(log.id)}>×</button>
     </div>)}</div>}
   </div>
