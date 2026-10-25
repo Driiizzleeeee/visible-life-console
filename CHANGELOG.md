@@ -52,6 +52,19 @@ Visible Life Console is developed iteratively from real daily use. This log high
 - Added compatibility for data previously written as version 11 while keeping the current data format at version 10.
 - Prevented the recent data-version mismatch from recurring on the main branch.
 
+### 2026-10-24
+
+#### Added
+
+- Added an automatic Time Invested bar to each leaf deliverable task so recorded effort stays visible before completion.
+- Added drag-handle ordering for projects within and across categories, and constrained sibling ordering for parent and child deliverable tasks.
+
+#### Changed
+
+- Actual time for a leaf task can no longer exceed its estimate.
+- An estimate can no longer be reduced below the actual time already recorded.
+- Quick logging and detailed worklog editing now show the available time and explain when the estimate must be increased.
+
 ## 中文
 
 Visible Life Console 会根据真实的日常使用体验持续迭代。本日志只记录有意义的新增功能、调整和修复，不罗列每一项细小的实现改动。
@@ -101,3 +114,16 @@ Visible Life Console 会根据真实的日常使用体验持续迭代。本日�
 - 修复修改预计时间或时间记录后，剩余时间更新不正确的问题。
 - 在继续使用数据版本 10 的同时，兼容读取之前写入的版本 11 数据。
 - 防止主分支再次因为数据版本不匹配而清空本地数据。
+
+### 2026-10-24
+
+#### 新增
+
+- 为每个最底层交付任务新增自动计算的 Time Invested 努力条，让任务完成前已经投入的时间也保持可见。
+- 为项目新增大类内部及跨大类拖动排序，并为父任务和子任务新增受层级约束的同级拖动排序。
+
+#### 调整
+
+- 最底层任务的实际投入时间不能再超过预计时间。
+- 预计时间不能再调低到小于已经记录的实际投入时间。
+- 快速记录和详细时间记录现在会显示可用时间，并在需要增加预计时间时给出明确提示。

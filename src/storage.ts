@@ -106,13 +106,15 @@ function migrateData(value: unknown): AppData {
       trackers: project.trackers.map((tracker) => ({
         ...tracker,
         tasks: tracker.tasks.map((task) => {
-          const estimateMinutes = Math.max(1, task.estimateMinutes || 60)
           const worklogs = Array.isArray(task.worklogs) ? task.worklogs : []
+          const loggedMinutes = worklogs.reduce((sum, log) => sum + log.minutes, 0)
+          const hasChildren = tracker.tasks.some((child) => child.parentId === task.id)
+          const estimateMinutes = Math.max(1, task.estimateMinutes || 60, hasChildren ? 0 : loggedMinutes)
           return {
             ...task,
             description: typeof task.description === 'string' ? task.description : '',
             estimateMinutes,
-            remainingEstimateMinutes: task.completed ? 0 : Math.max(0, estimateMinutes - worklogs.reduce((sum, log) => sum + log.minutes, 0)),
+            remainingEstimateMinutes: task.completed ? 0 : Math.max(0, estimateMinutes - loggedMinutes),
             worklogs,
           }
         }),

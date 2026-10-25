@@ -471,9 +471,14 @@ label input, label select, label textarea { display: block; margin-top: 6px; }
 .category-edit-form .category-save { color: var(--green); }
 .category-edit-form .category-delete { color: #a14c3b; }
 .manage-category > p { margin: 14px 12px; color: var(--muted); font-size: 10px; }
-.manage-project-row { width: 100%; display: grid; grid-template-columns: minmax(100px, 1fr) auto minmax(90px, 120px) auto; align-items: center; gap: 8px; padding: 8px 10px; border: 0; border-bottom: 1px solid #e5e2d9; background: white; text-align: left; cursor: grab; }
+.manage-project-row { position: relative; width: 100%; display: grid; grid-template-columns: 32px minmax(100px, 1fr) auto minmax(90px, 120px) auto; align-items: center; gap: 8px; padding: 8px 10px; border: 0; border-bottom: 1px solid #e5e2d9; background: white; text-align: left; }
 .manage-project-row:last-child { border-bottom: 0; }
 .manage-project-row:hover { background: #f1efe8; }
+.manage-project-row.dragging { opacity: .38; }
+.manage-project-row.drop-before::before, .manage-project-row.drop-after::after, .task-node.task-drop-before::before, .task-node.task-drop-after::after { content: ''; position: absolute; right: 5px; left: 5px; z-index: 2; height: 2px; border-radius: 99px; background: var(--green); pointer-events: none; }
+.manage-project-row.drop-before::before, .task-node.task-drop-before::before { top: -2px; }
+.manage-project-row.drop-after::after, .task-node.task-drop-after::after { bottom: -2px; }
+.project-drag-handle, .task-drag-handle { width: 30px; height: 26px; padding: 0; }
 .project-row-main { min-width: 0; padding: 3px 2px; border: 0; background: none; text-align: left; cursor: pointer; }
 .project-row-main span strong, .project-row-main span small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .project-row-main span strong { font-size: 11px; }
@@ -512,8 +517,9 @@ label input, label select, label textarea { display: block; margin-top: 6px; }
 .task-time-summary small { color: var(--muted); font-size: 8px; text-transform: uppercase; letter-spacing: .05em; }
 .task-time-summary strong { margin-top: 3px; font: 750 13px 'Segoe UI', sans-serif; }
 .task-tree { display: grid; gap: 6px; margin-top: 14px; }
-.task-node { min-width: 0; padding: 9px; border: 1px solid #dfddd4; border-radius: 9px; background: white; }
+.task-node { position: relative; min-width: 0; padding: 9px; border: 1px solid #dfddd4; border-radius: 9px; background: white; }
 .task-node.complete { background: #f1f5f2; }
+.task-node.dragging { opacity: .4; }
 .task-node-main { display: grid; grid-template-columns: 20px 17px minmax(100px, 1fr) auto auto auto 20px; align-items: center; gap: 6px; }
 .task-collapse, .task-action, .task-delete { border: 0; background: none; cursor: pointer; }
 .task-collapse { width: 20px; padding: 0; color: var(--green); font-size: 18px; font-weight: 800; }
@@ -526,14 +532,23 @@ label input, label select, label textarea { display: block; margin-top: 6px; }
 .task-percent { min-width: 32px; color: var(--green); font: 750 10px 'Segoe UI', sans-serif; text-align: right; }
 .task-action { padding: 4px; color: var(--green); font-size: 8px; font-weight: 750; white-space: nowrap; }
 .task-delete { color: #a14c3b; font-size: 15px; }
-.task-node-metrics { display: flex; flex-wrap: wrap; align-items: center; gap: 7px 14px; margin: 6px 0 0 43px; color: var(--muted); font-size: 8px; }
+.task-node-metrics { display: flex; flex-wrap: wrap; align-items: center; gap: 7px 14px; margin: 6px 0 0 79px; color: var(--muted); font-size: 8px; }
 .task-node-metrics b { color: var(--ink); }
 .task-node-metrics label { display: flex; align-items: center; gap: 4px; margin: 0; font-size: 8px; }
 .task-node-metrics input { width: 58px; margin: 0; padding: 4px 5px; font-size: 9px; }
 .quick-actual-form { display: flex; align-items: center; gap: 4px; }
 .quick-actual-form button { padding: 5px 7px; border: 1px solid var(--line); border-radius: 6px; background: #f3f5f1; color: var(--green); cursor: pointer; font-size: 8px; font-weight: 750; }
+.quick-actual-form input:disabled, .quick-actual-form button:disabled, .editable-worklogs input:disabled, .editable-worklogs button:disabled { opacity: .5; cursor: not-allowed; }
+.task-effort { display: grid; gap: 4px; margin: 8px 0 0 79px; }
+.task-effort-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); font-size: 8px; font-weight: 750; text-transform: uppercase; letter-spacing: .04em; }
+.task-effort-heading strong { color: var(--green); font-size: 9px; }
+.task-effort-track { height: 6px; overflow: hidden; border-radius: 99px; background: #e3e7e2; }
+.task-effort-track span { display: block; height: 100%; border-radius: inherit; background: var(--green); transition: width .2s ease; }
+.task-effort p { margin: 0; color: var(--muted); font-size: 8px; }
+.task-time-error { margin: 6px 0 0 79px; color: #9b4337; font-size: 8px; font-weight: 700; line-height: 1.4; }
+.editable-worklogs .task-time-error { margin-left: 0; }
 .task-children { display: grid; gap: 6px; margin-top: 7px; padding-left: 7px; border-left: 2px solid #dbe5df; }
-.subtask-form, .worklog-panel > form { display: grid; grid-template-columns: minmax(100px, 1fr) 78px auto; gap: 6px; margin: 8px 0 0 43px; }
+.subtask-form, .worklog-panel > form { display: grid; grid-template-columns: minmax(100px, 1fr) 78px auto; gap: 6px; margin: 8px 0 0 79px; }
 .subtask-form input, .subtask-form button, .worklog-panel input, .worklog-panel button { padding: 6px 7px; border: 1px solid var(--line); border-radius: 6px; background: white; font-size: 9px; }
 .subtask-form button, .worklog-panel button { cursor: pointer; font-weight: 750; }
 .worklog-panel { margin-top: 7px; padding-top: 7px; border-top: 1px dashed var(--line); }
@@ -578,9 +593,9 @@ label input, label select, label textarea { display: block; margin-top: 6px; }
 .deliverable-group .tracker-editor-head > input { min-width: 0; padding: 5px 7px; border-color: transparent; background: transparent; font-size: 13px; font-weight: 800; }
 .deliverable-group .tracker-editor-head > input:hover, .deliverable-group .tracker-editor-head > input:focus { border-color: var(--line); background: white; }
 .deliverable-group .tracker-editor-head button:disabled { opacity: .25; cursor: default; }
-.redesigned-task-main { grid-template-columns: 20px 17px minmax(120px, 1fr) auto auto auto 20px; }
+.redesigned-task-main { grid-template-columns: 30px 20px 17px minmax(120px, 1fr) auto auto auto 20px; }
 .redesigned-task-main .task-percent { min-width: 60px; }
-.task-details-panel { display: grid; gap: 10px; margin: 10px 0 0 43px; padding: 11px; border-top: 1px dashed var(--line); border-radius: 8px; background: #f5f6f2; }
+.task-details-panel { display: grid; gap: 10px; margin: 10px 0 0 79px; padding: 11px; border-top: 1px dashed var(--line); border-radius: 8px; background: #f5f6f2; }
 .task-details-panel > label { margin: 0; }
 .task-details-panel textarea { min-height: 70px; resize: vertical; }
 .editable-worklogs { display: grid; gap: 7px; }
@@ -722,7 +737,7 @@ label input, label select, label textarea { display: block; margin-top: 6px; }
   .motto-create-form, .motto-manager-list > div { grid-template-columns: 1fr; }
   .board-create-card form, .board-toolbar form { grid-template-columns: 1fr; }
   .board-column { width: 260px; }
-  .manage-project-row { grid-template-columns: minmax(100px, 1fr) auto auto; }
+  .manage-project-row { grid-template-columns: 32px minmax(100px, 1fr) auto auto; }
   .manage-project-row select { grid-column: 1 / -1; grid-row: 2; width: 100%; }
   .category-edit-form { grid-template-columns: auto minmax(90px, 1fr) auto; }
   .category-edit-form .category-delete { grid-column: 2 / -1; justify-self: end; }
@@ -738,7 +753,8 @@ label input, label select, label textarea { display: block; margin-top: 6px; }
   .redesigned-task-main { display: flex; flex-wrap: wrap; }
   .redesigned-task-main .task-title-input { flex: 1; min-width: 120px; }
   .redesigned-task-main .task-percent { margin-left: 33px; text-align: left; }
-  .task-node-metrics, .subtask-form, .worklog-panel > form, .worklog-list { margin-left: 37px; }
+  .task-node-metrics, .task-effort, .task-time-error, .subtask-form, .worklog-panel > form, .worklog-list { margin-left: 37px; }
+  .editable-worklogs .task-time-error { margin-left: 0; }
   .task-details-panel { margin-left: 0; }
   .subtask-form, .worklog-panel > form { grid-template-columns: 1fr 70px; }
   .subtask-form button, .worklog-panel > form button { grid-column: 1 / -1; }
