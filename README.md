@@ -2,6 +2,8 @@
 
 **A local-first personal dashboard for making progress, priorities, and everyday life visible.**
 
+**Project history:** [Changelog](CHANGELOG.md)
+
 [English](#english) | [中文说明](#中文说明)
 
 ## English
@@ -44,7 +46,7 @@ A later multi-device version can replace local storage with a Spring Boot API an
 ### Included
 
 - Category → Project → Deliverable Group → unlimited nested tasks; all delivery leaf tasks are globally weighted by editable estimates and Dashboard progress recalculates automatically
-- Actual time is stored as editable, removable dated entries with notes and never changes delivery progress
+- Actual time is stored as editable, removable dated entries with notes. It automatically reduces remaining time (`estimate − actual`) but never changes delivery progress
 - Supporting Work records learning, research, investigation, troubleshooting, planning, communication, organisation, and exploration time without affecting progress
 - The project drawer shows delivery progress, total investment, delivery remaining, and supporting investment; every task includes a Description field
 - Parent roll-ups for estimated, logged, and remaining time, with collapsible task trees and protected subtree deletion
@@ -113,7 +115,7 @@ Visible Life Console 是一个本地优先的“外置工作记忆”工具。�
 ### 当前功能
 
 - 大类 → 项目 → 交付分组 → 可无限嵌套任务的结构；所有最底层交付任务按照可修改的预计时间全局加权，Dashboard 自动重新计算项目百分比
-- 实际时间保存为可修改、可删除并带日期与说明的逐条记录；实际耗时不会改变交付百分比
+- 实际时间保存为可修改、可删除并带日期与说明的逐条记录；它会按照“预计时间－实际投入”自动减少剩余时间，但不会改变交付百分比
 - Supporting Work 独立记录学习、研究、调查、排错、规划、沟通、整理和探索时间，只进入累计投入，不影响项目进度
 - 项目抽屉集中显示交付进度、累计投入、交付预计剩余和支持性投入；每个任务都支持 Description
 - 父任务自动汇总预计时间、实际工作记录和剩余时间；任务树支持展开、收起与安全删除

@@ -86,13 +86,21 @@ function descendantIds(tasks: StockTask[], taskId: string): Set<string> {
   return result
 }
 
+function loggedMinutes(task: StockTask) {
+  return task.worklogs.reduce((sum, log) => sum + log.minutes, 0)
+}
+
+function calculatedRemaining(task: StockTask) {
+  return task.completed ? 0 : Math.max(0, Math.max(1, task.estimateMinutes || 60) - loggedMinutes(task))
+}
+
 function taskMetrics(tasks: StockTask[], rootId?: string) {
   const scope = rootId ? descendantIds(tasks, rootId) : new Set(tasks.map((task) => task.id))
   const scopedTasks = tasks.filter((task) => scope.has(task.id))
   const leaves = scopedTasks.filter((task) => !tasks.some((child) => child.parentId === task.id))
   const estimated = leaves.reduce((sum, task) => sum + Math.max(1, task.estimateMinutes || 60), 0)
   const spent = scopedTasks.reduce((sum, task) => sum + task.worklogs.reduce((total, log) => total + log.minutes, 0), 0)
-  const remaining = leaves.reduce((sum, task) => sum + (task.completed ? 0 : Math.max(0, task.remainingEstimateMinutes)), 0)
+  const remaining = leaves.reduce((sum, task) => sum + calculatedRemaining(task), 0)
   const completedWeight = leaves.reduce((sum, task) => sum + (task.completed ? Math.max(1, task.estimateMinutes || 60) : 0), 0)
   return { estimated, spent, remaining, completedWeight, percent: estimated ? Math.round(completedWeight / estimated * 100) : 0, leafCount: leaves.length }
 }
@@ -1734,7 +1742,9 @@ function Manage({ data, setData, setNotice }: { data: AppData; setData: React.Di
   const [editingCategoryId, setEditingCategoryId] = useState<string>()
   const [editingCategoryTitle, setEditingCategoryTitle] = useState('')
   const [draggedProjectId, setDraggedProjectId] = useState<string>()
+  const draggedProjectRef = useRef<string>()
   const [dragOverCategoryId, setDragOverCategoryId] = useState<string>()
+  const [projectDropTarget, setProjectDropTarget] = useState<{ id: string; position: 'before' | 'after' }>()
   const [doneTitle, setDoneTitle] = useState('')
   const [doneDate, setDoneDate] = useState(localDate())
   const fileRef = useRef<HTMLInputElement>(null)
@@ -1800,13 +1810,31 @@ function Manage({ data, setData, setNotice }: { data: AppData; setData: React.Di
     setEditingCategoryTitle('')
   }
 
-  function moveProject(projectId: string, categoryId: string) {
-    const category = data.categories.find((item) => item.id === categoryId)
-    if (!category) return
-    setData((current) => ({
-      ...current,
-      projects: current.projects.map((project) => project.id === projectId ? { ...project, categoryId, color: category.color } : project),
-    }))
+  function moveProject(projectId: string, categoryId: string, targetProjectId?: string, position: 'before' | 'after' = 'after') {
+    setData((current) => {
+      const category = current.categories.find((item) => item.id === categoryId)
+      const moving = current.projects.find((project) => project.id === projectId)
+      if (!category || !moving) return current
+      const projects = current.projects.filter((project) => project.id !== projectId)
+      const moved = { ...moving, categoryId, color: category.color }
+      if (targetProjectId) {
+        const targetIndex = projects.findIndex((project) => project.id === targetProjectId && project.categoryId === categoryId)
+        if (targetIndex >= 0) {
+          projects.splice(targetIndex + (position === 'after' ? 1 : 0), 0, moved)
+          return { ...current, projects }
+        }
+      }
+      const lastCategoryIndex = projects.reduce((result, project, index) => project.categoryId === categoryId ? index : result, -1)
+      projects.splice(lastCategoryIndex + 1, 0, moved)
+      return { ...current, projects }
+    })
+  }
+
+  function clearProjectDrag() {
+    draggedProjectRef.current = undefined
+    setDraggedProjectId(undefined)
+    setDragOverCategoryId(undefined)
+    setProjectDropTarget(undefined)
   }
 
   function addTracker(projectId: string, title: string, target: number) {
@@ -1834,7 +1862,7 @@ function Manage({ data, setData, setNotice }: { data: AppData; setData: React.Di
         ...item,
         completed: completing,
         completedAt: completing ? localDate() : undefined,
-        remainingEstimateMinutes: completing ? 0 : item.remainingEstimateMinutes || item.estimateMinutes,
+        remainingEstimateMinutes: completing ? 0 : calculatedRemaining({ ...item, completed: false }),
       } : item)
       return { ...tracker, tasks: syncParentTasks(tasks) }
     }) }) }))
@@ -1878,9 +1906,9 @@ function Manage({ data, setData, setNotice }: { data: AppData; setData: React.Di
             return <section
               key={category.id}
               className={`manage-category ${dragOverCategoryId === category.id ? 'drop-target' : ''}`}
-              onDragOver={(event) => { event.preventDefault(); if (draggedProjectId) setDragOverCategoryId(category.id) }}
+              onDragOver={(event) => { event.preventDefault(); if (draggedProjectRef.current ?? draggedProjectId) { setDragOverCategoryId(category.id); setProjectDropTarget(undefined) } }}
               onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragOverCategoryId(undefined) }}
-              onDrop={(event) => { event.preventDefault(); if (draggedProjectId) moveProject(draggedProjectId, category.id); setDraggedProjectId(undefined); setDragOverCategoryId(undefined) }}
+              onDrop={(event) => { event.preventDefault(); const activeProjectId = draggedProjectRef.current ?? draggedProjectId; if (activeProjectId) moveProject(activeProjectId, category.id); clearProjectDrag() }}
             >
               {isEditing ? <form className="category-edit-form" onSubmit={saveCategoryName}>
                 <i style={{ background: category.color }} />
@@ -1893,13 +1921,30 @@ function Manage({ data, setData, setNotice }: { data: AppData; setData: React.Di
                 <small>{projects.length}</small>
               </div>}
               {projects.length === 0 ? <p>No projects yet — drop a project here</p> : projects.map((project) => <div
-                className="manage-project-row"
+                className={`manage-project-row${draggedProjectId === project.id ? ' dragging' : ''}${projectDropTarget?.id === project.id ? ` drop-${projectDropTarget.position}` : ''}`}
                 key={project.id}
-                draggable
-                onDragStart={() => setDraggedProjectId(project.id)}
-                onDragEnd={() => { setDraggedProjectId(undefined); setDragOverCategoryId(undefined) }}
+                onDragOver={(event) => {
+                  const activeProjectId = draggedProjectRef.current ?? draggedProjectId
+                  if (!activeProjectId || activeProjectId === project.id) return
+                  event.preventDefault()
+                  event.stopPropagation()
+                  const bounds = event.currentTarget.getBoundingClientRect()
+                  setDragOverCategoryId(category.id)
+                  setProjectDropTarget({ id: project.id, position: event.clientY < bounds.top + bounds.height / 2 ? 'before' : 'after' })
+                }}
+                onDrop={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  const activeProjectId = draggedProjectRef.current ?? draggedProjectId
+                  if (activeProjectId && activeProjectId !== project.id) {
+                    const bounds = event.currentTarget.getBoundingClientRect()
+                    moveProject(activeProjectId, category.id, project.id, event.clientY < bounds.top + bounds.height / 2 ? 'before' : 'after')
+                  }
+                  clearProjectDrag()
+                }}
               >
-                <button className="project-row-main" onClick={() => setSelectedProjectId(project.id)}><span><strong>{project.title}</strong><small>{projectMetrics(project).leafCount} deliverable tasks · {formatMinutes(projectMetrics(project).totalSpent)} invested · drag to move</small></span></button>
+                <span className="drag-handle project-drag-handle" draggable role="button" tabIndex={0} aria-label={`Drag to reorder ${project.title}`} title="Drag to reorder" onDragStart={(event) => { event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', project.id); draggedProjectRef.current = project.id; setDraggedProjectId(project.id) }} onDragEnd={clearProjectDrag}><span className="drag-grip" aria-hidden="true">{Array.from({ length: 6 }, (_, index) => <i key={index} />)}</span></span>
+                <button className="project-row-main" onClick={() => setSelectedProjectId(project.id)}><span><strong>{project.title}</strong><small>{projectMetrics(project).leafCount} deliverable tasks · {formatMinutes(projectMetrics(project).totalSpent)} invested</small></span></button>
                 <b>{projectPercent(project)}%</b>
                 <select aria-label={`Move ${project.title} to category`} value={project.categoryId} onChange={(event) => moveProject(project.id, event.target.value)}>{data.categories.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select>
                 <button className="project-row-open" aria-label={`Open ${project.title}`} onClick={() => setSelectedProjectId(project.id)}>›</button>
@@ -2141,6 +2186,9 @@ function ProjectEditor({ project, categories, addTracker, addTask, toggleTask, s
   const [supportTitle, setSupportTitle] = useState('')
   const [supportType, setSupportType] = useState<SupportWorkType>('Learning')
   const [supportEstimate, setSupportEstimate] = useState('')
+  const [draggedTask, setDraggedTask] = useState<{ trackerId: string; taskId: string; parentId?: string }>()
+  const draggedTaskRef = useRef<{ trackerId: string; taskId: string; parentId?: string }>()
+  const [taskDropTarget, setTaskDropTarget] = useState<{ trackerId: string; taskId: string; position: 'before' | 'after' }>()
   const metrics = projectMetrics(project)
 
   function updateProject(patch: Partial<Project>) {
@@ -2169,22 +2217,79 @@ function ProjectEditor({ project, categories, addTracker, addTask, toggleTask, s
     updateTracker(trackerId, (current) => current.filter((item) => !ids.has(item.id)))
   }
 
+  function startTaskDrag(event: React.DragEvent<HTMLElement>, trackerId: string, task: StockTask) {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', task.id)
+    const active = { trackerId, taskId: task.id, parentId: task.parentId }
+    draggedTaskRef.current = active
+    setDraggedTask(active)
+  }
+
+  function clearTaskDrag() {
+    draggedTaskRef.current = undefined
+    setDraggedTask(undefined)
+    setTaskDropTarget(undefined)
+  }
+
+  function dragOverTask(event: React.DragEvent<HTMLDivElement>, trackerId: string, task: StockTask) {
+    const active = draggedTaskRef.current ?? draggedTask
+    if (!active || active.trackerId !== trackerId || active.taskId === task.id || (active.parentId ?? '') !== (task.parentId ?? '')) return
+    event.preventDefault()
+    event.stopPropagation()
+    const bounds = event.currentTarget.getBoundingClientRect()
+    setTaskDropTarget({ trackerId, taskId: task.id, position: event.clientY < bounds.top + bounds.height / 2 ? 'before' : 'after' })
+  }
+
+  function dropTask(event: React.DragEvent<HTMLDivElement>, trackerId: string, targetTask: StockTask) {
+    const active = draggedTaskRef.current ?? draggedTask
+    event.preventDefault()
+    event.stopPropagation()
+    if (!active || active.trackerId !== trackerId || active.taskId === targetTask.id || (active.parentId ?? '') !== (targetTask.parentId ?? '')) {
+      clearTaskDrag()
+      return
+    }
+    const bounds = event.currentTarget.getBoundingClientRect()
+    const position = event.clientY < bounds.top + bounds.height / 2 ? 'before' : 'after'
+    updateTracker(trackerId, (tasks) => {
+      const moving = tasks.find((task) => task.id === active.taskId)
+      if (!moving) return tasks
+      const siblings = tasks.filter((task) => (task.parentId ?? '') === (moving.parentId ?? '') && task.id !== moving.id)
+      const targetIndex = siblings.findIndex((task) => task.id === targetTask.id)
+      if (targetIndex < 0) return tasks
+      siblings.splice(targetIndex + (position === 'after' ? 1 : 0), 0, moving)
+      let siblingIndex = 0
+      return tasks.map((task) => (task.parentId ?? '') === (moving.parentId ?? '') ? siblings[siblingIndex++] : task)
+    })
+    clearTaskDrag()
+  }
+
   function addTaskWorklog(trackerId: string, taskId: string, minutes: number, date: string, note: string) {
-    updateTracker(trackerId, (tasks) => tasks.map((task) => task.id === taskId ? {
-      ...task,
-      worklogs: [...task.worklogs, { id: id(), date, minutes: Math.max(1, Math.round(minutes)), note: note.trim() || undefined }],
-    } : task))
+    updateTracker(trackerId, (tasks) => tasks.map((task) => {
+      if (task.id !== taskId) return task
+      const safeMinutes = Math.max(1, Math.round(minutes))
+      const isLeaf = !tasks.some((child) => child.parentId === taskId)
+      if (isLeaf && loggedMinutes(task) + safeMinutes > task.estimateMinutes) return task
+      const worklogs = [...task.worklogs, { id: id(), date, minutes: safeMinutes, note: note.trim() || undefined }]
+      return { ...task, worklogs, remainingEstimateMinutes: task.completed ? 0 : Math.max(0, task.estimateMinutes - worklogs.reduce((sum, log) => sum + log.minutes, 0)) }
+    }))
   }
 
   function updateTaskWorklog(trackerId: string, taskId: string, worklogId: string, patch: Partial<TaskWorklog>) {
-    updateTracker(trackerId, (tasks) => tasks.map((task) => task.id === taskId ? {
-      ...task,
-      worklogs: task.worklogs.map((log) => log.id === worklogId ? { ...log, ...patch } : log),
-    } : task))
+    updateTracker(trackerId, (tasks) => tasks.map((task) => {
+      if (task.id !== taskId) return task
+      const worklogs = task.worklogs.map((log) => log.id === worklogId ? { ...log, ...patch } : log)
+      const isLeaf = !tasks.some((child) => child.parentId === taskId)
+      if (isLeaf && worklogs.reduce((sum, log) => sum + log.minutes, 0) > task.estimateMinutes) return task
+      return { ...task, worklogs, remainingEstimateMinutes: task.completed ? 0 : Math.max(0, task.estimateMinutes - worklogs.reduce((sum, log) => sum + log.minutes, 0)) }
+    }))
   }
 
   function deleteTaskWorklog(trackerId: string, taskId: string, worklogId: string) {
-    updateTracker(trackerId, (tasks) => tasks.map((task) => task.id === taskId ? { ...task, worklogs: task.worklogs.filter((log) => log.id !== worklogId) } : task))
+    updateTracker(trackerId, (tasks) => tasks.map((task) => {
+      if (task.id !== taskId) return task
+      const worklogs = task.worklogs.filter((log) => log.id !== worklogId)
+      return { ...task, worklogs, remainingEstimateMinutes: task.completed ? 0 : Math.max(0, task.estimateMinutes - worklogs.reduce((sum, log) => sum + log.minutes, 0)) }
+    }))
   }
 
   function addSupportWork(event: FormEvent) {
@@ -2223,7 +2328,7 @@ function ProjectEditor({ project, categories, addTracker, addTask, toggleTask, s
     <div className="project-metric-grid">
       <div className="primary-metric"><span>Delivery progress</span><strong>{metrics.percent}%</strong><small>Completed estimated weight</small></div>
       <div><span>Total invested</span><strong>{formatMinutes(metrics.totalSpent)}</strong><small>Direct + supporting work</small></div>
-      <div><span>Delivery remaining</span><strong>{formatMinutes(metrics.remaining)}</strong><small>Editable current forecast</small></div>
+      <div><span>Delivery remaining</span><strong>{formatMinutes(metrics.remaining)}</strong><small>Estimate minus logged actual time</small></div>
       <div><span>Supporting work</span><strong>{formatMinutes(metrics.supportSpent)}</strong><small>Does not change progress</small></div>
     </div>
     <div className="project-progress-overview"><div><span style={{ width: `${metrics.percent}%`, background: project.color }} /></div><p><strong>{formatMinutes(metrics.estimated)}</strong> delivery estimate · <strong>{metrics.leafCount}</strong> leaf task{metrics.leafCount === 1 ? '' : 's'}</p></div>
@@ -2240,8 +2345,8 @@ function ProjectEditor({ project, categories, addTracker, addTask, toggleTask, s
           </div>
           <div className="task-time-summary">
             <span><small>Estimated</small><strong>{formatMinutes(trackerMetrics.estimated)}</strong></span>
-            <span><small>Actual</small><strong>{formatMinutes(trackerMetrics.spent)}</strong></span>
             <span><small>Remaining</small><strong>{formatMinutes(trackerMetrics.remaining)}</strong></span>
+            <span><small>Actual</small><strong>{formatMinutes(trackerMetrics.spent)}</strong></span>
             <span><small>Project weight</small><strong>{metrics.estimated ? Math.round(trackerMetrics.estimated / metrics.estimated * 100) : 0}%</strong></span>
           </div>
 
@@ -2260,6 +2365,12 @@ function ProjectEditor({ project, categories, addTracker, addTask, toggleTask, s
             addWorklog={addTaskWorklog}
             updateWorklog={updateTaskWorklog}
             deleteWorklog={deleteTaskWorklog}
+            draggedTask={draggedTask}
+            taskDropTarget={taskDropTarget}
+            startTaskDrag={startTaskDrag}
+            clearTaskDrag={clearTaskDrag}
+            dragOverTask={dragOverTask}
+            dropTask={dropTask}
           />)}</div>}
 
           <form className="task-create-form" onSubmit={(event) => {
@@ -2288,7 +2399,41 @@ function ProjectEditor({ project, categories, addTracker, addTask, toggleTask, s
   </section>
 }
 
-function TaskNode({ task, tasks, depth, trackerId, projectId, projectEstimate, addTask, toggleTask, updateTask, deleteTask, addWorklog, updateWorklog, deleteWorklog }: {
+function DeferredNumberInput({ value, min = 0, ariaLabel, onCommit }: {
+  value: number
+  min?: number
+  ariaLabel: string
+  onCommit: (value: number) => boolean | void
+}) {
+  const [draft, setDraft] = useState(String(value))
+  useEffect(() => setDraft(String(value)), [value])
+
+  function commit() {
+    if (draft.trim() === '') {
+      setDraft(String(value))
+      return
+    }
+    const parsed = Math.max(min, Math.round(Number(draft)))
+    if (!Number.isFinite(parsed)) {
+      setDraft(String(value))
+      return
+    }
+    const accepted = onCommit(parsed)
+    setDraft(String(accepted === false ? value : parsed))
+  }
+
+  return <input
+    aria-label={ariaLabel}
+    type="number"
+    min={min}
+    value={draft}
+    onChange={(event) => setDraft(event.target.value)}
+    onBlur={commit}
+    onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur() }}
+  />
+}
+
+function TaskNode({ task, tasks, depth, trackerId, projectId, projectEstimate, addTask, toggleTask, updateTask, deleteTask, addWorklog, updateWorklog, deleteWorklog, draggedTask, taskDropTarget, startTaskDrag, clearTaskDrag, dragOverTask, dropTask }: {
   task: StockTask
   tasks: StockTask[]
   depth: number
@@ -2302,6 +2447,12 @@ function TaskNode({ task, tasks, depth, trackerId, projectId, projectEstimate, a
   addWorklog: (trackerId: string, taskId: string, minutes: number, date: string, note: string) => void
   updateWorklog: (trackerId: string, taskId: string, worklogId: string, patch: Partial<TaskWorklog>) => void
   deleteWorklog: (trackerId: string, taskId: string, worklogId: string) => void
+  draggedTask?: { trackerId: string; taskId: string; parentId?: string }
+  taskDropTarget?: { trackerId: string; taskId: string; position: 'before' | 'after' }
+  startTaskDrag: (event: React.DragEvent<HTMLElement>, trackerId: string, task: StockTask) => void
+  clearTaskDrag: () => void
+  dragOverTask: (event: React.DragEvent<HTMLDivElement>, trackerId: string, task: StockTask) => void
+  dropTask: (event: React.DragEvent<HTMLDivElement>, trackerId: string, task: StockTask) => void
 }) {
   const children = taskChildren(tasks, task.id)
   const hasChildren = children.length > 0
@@ -2311,9 +2462,44 @@ function TaskNode({ task, tasks, depth, trackerId, projectId, projectEstimate, a
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [subtaskTitle, setSubtaskTitle] = useState('')
   const [subtaskEstimate, setSubtaskEstimate] = useState(String(task.estimateMinutes || 60))
+  const [quickActual, setQuickActual] = useState('')
+  const [timeError, setTimeError] = useState('')
+  const actualMinutes = loggedMinutes(task)
+  const availableMinutes = Math.max(0, task.estimateMinutes - actualMinutes)
+  const effortPercent = task.estimateMinutes ? Math.min(100, Math.round(actualMinutes / task.estimateMinutes * 100)) : 0
 
-  return <div className={`task-node ${task.completed ? 'complete' : ''}`} style={{ marginLeft: depth > 0 ? '14px' : 0 }}>
+  function updateEstimate(estimateMinutes: number) {
+    if (estimateMinutes < actualMinutes) {
+      setTimeError(`Estimate cannot be lower than the ${formatMinutes(actualMinutes)} already logged.`)
+      return false
+    }
+    setTimeError('')
+    updateTask(trackerId, task.id, {
+      estimateMinutes,
+      remainingEstimateMinutes: task.completed ? 0 : estimateMinutes - actualMinutes,
+    })
+    return true
+  }
+
+  function logActual(event: FormEvent) {
+    event.preventDefault()
+    const minutes = Math.round(Number(quickActual))
+    if (!Number.isFinite(minutes) || minutes < 1) return
+    if (minutes > availableMinutes) {
+      setTimeError(`Only ${formatMinutes(availableMinutes)} remains. Increase the estimate before logging more time.`)
+      return
+    }
+    addWorklog(trackerId, task.id, minutes, localDate(), '')
+    setTimeError('')
+    setQuickActual('')
+  }
+
+  const dropClass = taskDropTarget?.trackerId === trackerId && taskDropTarget.taskId === task.id ? ` task-drop-${taskDropTarget.position}` : ''
+  const draggingClass = draggedTask?.trackerId === trackerId && draggedTask.taskId === task.id ? ' dragging' : ''
+
+  return <div className={`task-node ${task.completed ? 'complete' : ''}${draggingClass}${dropClass}`} style={{ marginLeft: depth > 0 ? '14px' : 0 }} onDragOver={(event) => dragOverTask(event, trackerId, task)} onDrop={(event) => dropTask(event, trackerId, task)}>
     <div className="task-node-main redesigned-task-main">
+      <span className="drag-handle task-drag-handle" draggable role="button" tabIndex={0} aria-label={`Drag to reorder ${task.title}`} title="Drag within this level" onDragStart={(event) => startTaskDrag(event, trackerId, task)} onDragEnd={clearTaskDrag}><span className="drag-grip" aria-hidden="true">{Array.from({ length: 6 }, (_, index) => <i key={index} />)}</span></span>
       {hasChildren ? <button className="task-collapse" aria-label={`${task.collapsed ? 'Expand' : 'Collapse'} ${task.title}`} onClick={() => updateTask(trackerId, task.id, { collapsed: !task.collapsed })}>{task.collapsed ? '›' : '⌄'}</button> : <span className="task-leaf-dot" />}
       <input className="task-checkbox" aria-label={`Complete ${task.title}`} type="checkbox" checked={task.completed} disabled={hasChildren} onChange={() => toggleTask(projectId, trackerId, task.id)} />
       <input className="task-title-input" aria-label={`${task.title} title`} value={task.title} onChange={(event) => updateTask(trackerId, task.id, { title: event.target.value })} />
@@ -2324,17 +2510,26 @@ function TaskNode({ task, tasks, depth, trackerId, projectId, projectEstimate, a
     </div>
 
     <div className="task-node-metrics">
-      {hasChildren ? <><span>Estimated <b>{formatMinutes(metrics.estimated)}</b></span><span>Actual <b>{formatMinutes(metrics.spent)}</b></span><span>Remaining <b>{formatMinutes(metrics.remaining)}</b></span><span>Progress <b>{metrics.percent}%</b></span></> : <>
-        <label>Estimate <input aria-label={`${task.title} estimate minutes`} type="number" min="1" value={task.estimateMinutes} onChange={(event) => { const estimateMinutes = Math.max(1, Number(event.target.value) || 1); updateTask(trackerId, task.id, { estimateMinutes, remainingEstimateMinutes: task.remainingEstimateMinutes === task.estimateMinutes ? estimateMinutes : task.remainingEstimateMinutes }) }} /> min</label>
+      {hasChildren ? <><span>Estimated <b>{formatMinutes(metrics.estimated)}</b></span><span>Remaining <b>{formatMinutes(metrics.remaining)}</b></span><span>Actual <b>{formatMinutes(metrics.spent)}</b></span><span>Progress <b>{metrics.percent}%</b></span></> : <>
+        <label>Estimate <DeferredNumberInput ariaLabel={`${task.title} estimate minutes`} min={1} value={task.estimateMinutes} onCommit={updateEstimate} /> min</label>
+        <span>Remaining <b>{formatMinutes(metrics.remaining)}</b></span>
         <span>Actual <b>{formatMinutes(metrics.spent)}</b></span>
-        <label>Remaining <input aria-label={`${task.title} remaining minutes`} type="number" min="0" value={task.remainingEstimateMinutes} disabled={task.completed} onChange={(event) => updateTask(trackerId, task.id, { remainingEstimateMinutes: Math.max(0, Number(event.target.value) || 0) })} /> min</label>
+        <form className="quick-actual-form" onSubmit={logActual}><label>Log actual <input aria-label={`${task.title} new actual minutes`} type="number" min="1" value={quickActual} disabled={availableMinutes === 0} onChange={(event) => { setQuickActual(event.target.value); setTimeError('') }} placeholder={availableMinutes === 0 ? 'Full' : `${availableMinutes} left`} /></label><button disabled={availableMinutes === 0}>Add</button></form>
       </>}
     </div>
+
+    {!hasChildren && <div className="task-effort">
+      <div className="task-effort-heading"><span>Time invested</span><strong>{effortPercent}%</strong></div>
+      <div className="task-effort-track" role="progressbar" aria-label={`${task.title} time invested`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={effortPercent}><span style={{ width: `${effortPercent}%` }} /></div>
+      <p>{task.completed ? `Completed in ${formatMinutes(actualMinutes)} · estimated ${formatMinutes(task.estimateMinutes)}` : `${formatMinutes(actualMinutes)} of ${formatMinutes(task.estimateMinutes)} recorded`}</p>
+    </div>}
+    {timeError && <p className="task-time-error" role="alert">{timeError}</p>}
 
     {detailsOpen && <div className="task-details-panel">
       <label>Description<textarea rows={3} value={task.description ?? ''} onChange={(event) => updateTask(trackerId, task.id, { description: event.target.value })} placeholder="Requirements, context, links, or notes for this task." /></label>
       <EditableWorklogs
         logs={task.worklogs}
+        maxMinutes={hasChildren ? undefined : task.estimateMinutes}
         onAdd={(minutes, date, note) => addWorklog(trackerId, task.id, minutes, date, note)}
         onUpdate={(worklogId, patch) => updateWorklog(trackerId, task.id, worklogId, patch)}
         onDelete={(worklogId) => deleteWorklog(trackerId, task.id, worklogId)}
@@ -2343,12 +2538,13 @@ function TaskNode({ task, tasks, depth, trackerId, projectId, projectEstimate, a
 
     {subtaskOpen && <form className="subtask-form" onSubmit={(event) => { event.preventDefault(); addTask(projectId, trackerId, subtaskTitle, Number(subtaskEstimate), task.id); setSubtaskTitle(''); setSubtaskOpen(false) }}><input autoFocus value={subtaskTitle} onChange={(event) => setSubtaskTitle(event.target.value)} placeholder="Nested task" /><input aria-label="Subtask estimate minutes" type="number" min="1" value={subtaskEstimate} onChange={(event) => setSubtaskEstimate(event.target.value)} /><button>Add</button></form>}
 
-    {hasChildren && !task.collapsed && <div className="task-children">{children.map((child) => <TaskNode key={child.id} task={child} tasks={tasks} depth={depth + 1} trackerId={trackerId} projectId={projectId} projectEstimate={projectEstimate} addTask={addTask} toggleTask={toggleTask} updateTask={updateTask} deleteTask={deleteTask} addWorklog={addWorklog} updateWorklog={updateWorklog} deleteWorklog={deleteWorklog} />)}</div>}
+    {hasChildren && !task.collapsed && <div className="task-children">{children.map((child) => <TaskNode key={child.id} task={child} tasks={tasks} depth={depth + 1} trackerId={trackerId} projectId={projectId} projectEstimate={projectEstimate} addTask={addTask} toggleTask={toggleTask} updateTask={updateTask} deleteTask={deleteTask} addWorklog={addWorklog} updateWorklog={updateWorklog} deleteWorklog={deleteWorklog} draggedTask={draggedTask} taskDropTarget={taskDropTarget} startTaskDrag={startTaskDrag} clearTaskDrag={clearTaskDrag} dragOverTask={dragOverTask} dropTask={dropTask} />)}</div>}
   </div>
 }
 
-function EditableWorklogs({ logs, onAdd, onUpdate, onDelete }: {
+function EditableWorklogs({ logs, maxMinutes, onAdd, onUpdate, onDelete }: {
   logs: TaskWorklog[]
+  maxMinutes?: number
   onAdd: (minutes: number, date: string, note: string) => void
   onUpdate: (worklogId: string, patch: Partial<TaskWorklog>) => void
   onDelete: (worklogId: string) => void
@@ -2356,18 +2552,47 @@ function EditableWorklogs({ logs, onAdd, onUpdate, onDelete }: {
   const [minutes, setMinutes] = useState('30')
   const [date, setDate] = useState(localDate())
   const [note, setNote] = useState('')
+  const [error, setError] = useState('')
+  const spent = logs.reduce((sum, log) => sum + log.minutes, 0)
+  const available = maxMinutes === undefined ? undefined : Math.max(0, maxMinutes - spent)
+
+  function addLog(event: FormEvent) {
+    event.preventDefault()
+    const nextMinutes = Math.max(1, Math.round(Number(minutes)) || 1)
+    if (available !== undefined && nextMinutes > available) {
+      setError(`Only ${formatMinutes(available)} remains. Increase the estimate before logging more time.`)
+      return
+    }
+    onAdd(nextMinutes, date, note)
+    setError('')
+    setMinutes('30')
+    setNote('')
+  }
+
+  function updateMinutes(log: TaskWorklog, nextMinutes: number) {
+    if (maxMinutes !== undefined && spent - log.minutes + nextMinutes > maxMinutes) {
+      const maximum = Math.max(1, maxMinutes - (spent - log.minutes))
+      setError(`This record can be at most ${formatMinutes(maximum)} unless you increase the estimate.`)
+      return false
+    }
+    setError('')
+    onUpdate(log.id, { minutes: nextMinutes })
+    return true
+  }
+
   return <div className="editable-worklogs">
-    <div className="worklog-title"><strong>Actual time</strong><span>{formatMinutes(logs.reduce((sum, log) => sum + log.minutes, 0))} logged</span></div>
-    <form onSubmit={(event) => { event.preventDefault(); onAdd(Math.max(1, Number(minutes) || 1), date, note); setMinutes('30'); setNote('') }}>
-      <input aria-label="Actual minutes" type="number" min="1" value={minutes} onChange={(event) => setMinutes(event.target.value)} />
+    <div className="worklog-title"><strong>Actual time</strong><span>{formatMinutes(spent)} logged{available === undefined ? '' : ` · ${formatMinutes(available)} available`}</span></div>
+    <form onSubmit={addLog}>
+      <input aria-label="Actual minutes" type="number" min="1" value={minutes} disabled={available === 0} onChange={(event) => { setMinutes(event.target.value); setError('') }} />
       <input aria-label="Work date" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
       <input aria-label="Time record note" value={note} onChange={(event) => setNote(event.target.value)} placeholder="What did this time go toward?" />
-      <button>Log time</button>
+      <button disabled={available === 0}>Log time</button>
     </form>
+    {error && <p className="task-time-error" role="alert">{error}</p>}
     {logs.length > 0 && <div className="editable-worklog-list">{logs.map((log) => <div key={log.id}>
       <input aria-label="Recorded date" type="date" value={log.date} onChange={(event) => onUpdate(log.id, { date: event.target.value })} />
       <input aria-label="Time record note" value={log.note ?? ''} onChange={(event) => onUpdate(log.id, { note: event.target.value })} placeholder="No note" />
-      <label><input aria-label="Recorded minutes" type="number" min="1" value={log.minutes} onChange={(event) => onUpdate(log.id, { minutes: Math.max(1, Number(event.target.value) || 1) })} /> min</label>
+      <label><DeferredNumberInput ariaLabel="Recorded minutes" min={1} value={log.minutes} onCommit={(minutes) => updateMinutes(log, minutes)} /> min</label>
       <button aria-label={`Delete ${formatMinutes(log.minutes)} time record`} onClick={() => onDelete(log.id)}>×</button>
     </div>)}</div>}
   </div>

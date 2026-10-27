@@ -2,6 +2,7 @@ import { DEFAULT_PROJECT_CATEGORIES, type AppData } from './types'
 
 const STORAGE_KEY = 'visible-life-console-v1'
 const LEGACY_STORAGE_KEY = 'visible-dashboard-v1'
+const READABLE_DATA_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
 
 export const emptyData: AppData = {
   version: 11,
@@ -68,7 +69,7 @@ export function downloadCsv(data: AppData) {
 export function parseBackup(text: string): AppData {
   const parsed = JSON.parse(text) as Partial<AppData> & { version?: number }
   if (
-    ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].includes(parsed.version ?? 0) ||
+    !READABLE_DATA_VERSIONS.includes(parsed.version ?? 0) ||
     !Array.isArray(parsed.projects) ||
     !Array.isArray(parsed.activities) ||
     !Array.isArray(parsed.priorities) ||
@@ -82,7 +83,7 @@ export function parseBackup(text: string): AppData {
 function migrateData(value: unknown): AppData {
   const parsed = value as Partial<AppData> & { version?: number; projects?: Array<AppData['projects'][number] & { categoryId?: string }> }
   if (
-    ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].includes(parsed.version ?? 0) ||
+    !READABLE_DATA_VERSIONS.includes(parsed.version ?? 0) ||
     !Array.isArray(parsed.projects) ||
     !Array.isArray(parsed.activities) ||
     !Array.isArray(parsed.priorities) ||
@@ -107,13 +108,19 @@ function migrateData(value: unknown): AppData {
       })) : [],
       trackers: project.trackers.map((tracker) => ({
         ...tracker,
-        tasks: tracker.tasks.map((task) => ({
-          ...task,
-          description: typeof task.description === 'string' ? task.description : '',
-          estimateMinutes: Math.max(1, task.estimateMinutes || 60),
-          remainingEstimateMinutes: task.completed ? 0 : Math.max(0, task.remainingEstimateMinutes ?? task.estimateMinutes ?? 60),
-          worklogs: Array.isArray(task.worklogs) ? task.worklogs : [],
-        })),
+        tasks: tracker.tasks.map((task) => {
+          const worklogs = Array.isArray(task.worklogs) ? task.worklogs : []
+          const loggedMinutes = worklogs.reduce((sum, log) => sum + log.minutes, 0)
+          const hasChildren = tracker.tasks.some((child) => child.parentId === task.id)
+          const estimateMinutes = Math.max(1, task.estimateMinutes || 60, hasChildren ? 0 : loggedMinutes)
+          return {
+            ...task,
+            description: typeof task.description === 'string' ? task.description : '',
+            estimateMinutes,
+            remainingEstimateMinutes: task.completed ? 0 : Math.max(0, estimateMinutes - loggedMinutes),
+            worklogs,
+          }
+        }),
       })),
     })),
     activities: parsed.activities,
