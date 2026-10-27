@@ -176,12 +176,13 @@ main { max-width: 1760px; margin: auto; padding: 50px 24px 80px; }
 .day-events { display: grid; gap: 3px; min-width: 0; }
 .event-chip { display: block; min-width: 0; padding: 3px 5px; border-left: 3px solid var(--green); border-radius: 3px; background: #e6efeb; color: #31493f; font-size: 8px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .event-chip time { margin-right: 4px; color: var(--green); font-variant-numeric: tabular-nums; }
+.life-event-heart { margin-right: 4px; color: #a85f7d; font-weight: 900; }
 .day-events > small { color: var(--muted); font-size: 8px; }
 .day-agenda { min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: #f6f4ed; }
 .agenda-title h3 { margin: 5px 0 15px; font: 750 18px 'Segoe UI', sans-serif; letter-spacing: -.025em; }
 .agenda-list { display: grid; gap: 7px; }
 .agenda-empty { margin: 0; padding: 18px 0; color: var(--muted); font-size: 10px; text-align: center; }
-.agenda-event { display: grid; grid-template-columns: 54px minmax(0, 1fr) auto; align-items: start; gap: 7px; padding: 8px; border-radius: 8px; background: white; font-size: 10px; }
+.agenda-event { display: grid; grid-template-columns: 54px minmax(0, 1fr) auto; align-items: start; gap: 7px; padding: 8px; border-left: 3px solid var(--green); border-radius: 8px; background: white; font-size: 10px; }
 .agenda-event time { color: var(--green); font-weight: 750; font-variant-numeric: tabular-nums; }
 .agenda-event span { overflow-wrap: anywhere; font-weight: 650; }
 .agenda-event-actions { display: flex; align-items: center; gap: 3px; }
@@ -189,9 +190,45 @@ main { max-width: 1760px; margin: auto; padding: 50px 24px 80px; }
 .agenda-event-actions button:first-child { color: var(--green); }
 .agenda-form { display: grid; grid-template-columns: 1fr 96px; gap: 7px; margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--line); }
 .agenda-form input { min-width: 0; }
-.agenda-form > input:first-child, .agenda-form button { grid-column: 1 / -1; }
+.agenda-form > input[aria-label="Plan title"], .agenda-form > select, .agenda-form > button { grid-column: 1 / -1; }
+.calendar-event-type { grid-column: 1 / -1; min-width: 0; margin: 0; padding: 0; border: 0; }
+.calendar-event-type legend { margin-bottom: 7px; color: var(--muted); font-size: 8px; font-weight: 750; text-transform: uppercase; letter-spacing: .08em; }
+.calendar-event-type > div { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.agenda-form .calendar-event-type button { grid-column: auto; padding: 7px; border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--muted); cursor: pointer; font-size: 8px; font-weight: 750; }
+.agenda-form .calendar-event-type button.selected { border-color: #b97994; background: #f6e9ee; color: #7f4f63; }
+.calendar-event-type-help { grid-column: 1 / -1; margin: -1px 0 2px; color: var(--muted); font-size: 8px; line-height: 1.45; }
 .agenda-edit-notice { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; padding: 7px 9px; border-radius: 7px; background: #e6efeb; color: var(--green); font-size: 9px; font-weight: 750; }
 .agenda-edit-notice button { grid-column: auto; padding: 0; border: 0; background: none; color: #a14c3b; cursor: pointer; font-size: 8px; }
+.calendar-color-picker { grid-column: 1 / -1; min-width: 0; margin: 0; padding: 0; border: 0; }
+.calendar-color-picker legend { margin-bottom: 7px; color: var(--muted); font-size: 8px; font-weight: 750; text-transform: uppercase; letter-spacing: .08em; }
+.calendar-color-picker > div { display: flex; flex-wrap: wrap; gap: 7px; }
+.agenda-form .calendar-color-picker button { width: 24px; height: 24px; display: grid; place-items: center; flex: none; padding: 0; border: 2px solid transparent; border-radius: 50%; color: white; cursor: pointer; font-size: 10px; font-weight: 800; box-shadow: 0 0 0 1px rgba(38,52,58,.1); }
+.agenda-form .calendar-color-picker button:hover { transform: scale(1.08); }
+.agenda-form .calendar-color-picker button.selected { border-color: white; box-shadow: 0 0 0 2px var(--ink); }
+.life-month-panel { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
+.life-month-heading { display: flex; align-items: start; justify-content: space-between; gap: 8px; }
+.life-month-heading h3 { margin: 4px 0 0; font: 750 15px 'Segoe UI', sans-serif; letter-spacing: -.02em; }
+.life-month-heading > button { padding: 0; border: 0; background: none; color: var(--orange); cursor: pointer; font-size: 8px; font-weight: 750; }
+.life-month-empty { margin: 13px 0; color: var(--muted); font-size: 9px; line-height: 1.5; }
+.life-month-list { display: grid; gap: 5px; margin-top: 12px; }
+.life-month-list label { display: flex; align-items: start; gap: 7px; padding: 6px 7px; border-radius: 7px; background: rgba(255,255,255,.7); cursor: pointer; font-size: 9px; }
+.life-month-list label.complete { background: #f2e9ed; color: #7a5363; }
+.life-month-list label input { width: 14px; height: 14px; flex: none; margin: 0; accent-color: #a85f7d; }
+.life-month-list label span { min-width: 0; overflow-wrap: anywhere; }
+.life-month-list label small { display: block; margin-top: 2px; color: var(--muted); font-size: 7px; font-weight: 500; }
+.life-month-list label.complete > span { text-decoration: none; }
+.life-month-actions { margin-top: 9px; }
+.life-month-actions button { padding: 0; border: 0; background: none; color: #8f5870; cursor: pointer; font-size: 9px; font-weight: 750; }
+.life-dream-capture form { display: grid; grid-template-columns: minmax(0, 1fr) 31px; gap: 5px; margin-top: 11px; }
+.life-dream-capture input { min-width: 0; padding: 7px 8px; font-size: 8px; }
+.life-dream-capture button { border: 1px solid #d3dcd7; border-radius: 7px; background: white; color: #8f5870; cursor: pointer; font-weight: 800; }
+.life-dream-capture { margin-top: 15px; padding-top: 12px; border-top: 1px dashed var(--line); }
+.life-dream-capture > small { color: var(--muted); font-size: 8px; }
+.life-moment-quick-form { display: grid; gap: 6px; margin-top: 12px; padding: 11px; border-radius: 9px; background: #f5e9ee; }
+.life-moment-quick-form > div { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 9px; }
+.life-moment-quick-form > div button { padding: 0; border: 0; background: none; color: #8f5870; cursor: pointer; font-size: 8px; }
+.life-moment-quick-form input, .life-moment-quick-form textarea { padding: 7px 8px; font-size: 8px; }
+.life-moment-quick-form .primary { padding: 8px; font-size: 9px; }
 .heatmap-scroll { overflow-x: auto; padding-bottom: 5px; }
 .heatmap-heading { align-items: center; }
 .heatmap-tabs { display: flex !important; gap: 4px !important; padding: 3px; border-radius: 9px; background: #efede6; }
@@ -418,6 +455,56 @@ label input, label select, label textarea { display: block; margin-top: 6px; }
 .motto-list-empty span { font-size: 10px; }
 .motto-rule-note { margin: 22px 0 0; padding: 13px 15px; border-radius: 9px; background: #edf4f0; color: #52645b; font-size: 9px; line-height: 1.55; }
 .motto-rule-note code { padding: 1px 4px; border-radius: 4px; background: #dfe9e3; color: #315d4d; font-size: inherit; }
+.life-hero { margin-bottom: 22px; }
+.life-tabs { display: flex; width: fit-content; gap: 4px; margin-bottom: 16px; padding: 4px; border-radius: 11px; background: #e4e8e5; }
+.life-tabs button { padding: 9px 15px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; font-size: 10px; font-weight: 750; }
+.life-tabs button.active { background: var(--paper); color: var(--ink); box-shadow: 0 3px 10px rgba(38,52,58,.08); }
+.life-create-card { width: min(100%, 760px); }
+.life-gentle-copy { margin: -5px 0 17px; color: var(--muted); font-size: 10px; line-height: 1.55; }
+.life-moment-form { display: grid; gap: 9px; }
+.life-moment-form .primary { justify-self: start; }
+.life-archive-card .card-heading select { width: auto; min-width: 90px; padding: 7px 9px; }
+.life-year-summary { margin: -5px 0 20px; color: #8f5870; font-size: 11px; font-weight: 650; }
+.life-archive { display: grid; gap: 22px; }
+.life-archive > section > h3 { margin: 0 0 10px; color: var(--muted); font: 750 11px 'Segoe UI', sans-serif; text-transform: uppercase; letter-spacing: .08em; }
+.life-moment-card { display: grid; grid-template-columns: minmax(0, 1.2fr) 125px minmax(120px, .8fr) auto; gap: 7px; align-items: start; padding: 12px; border-left: 3px solid #b97994; border-radius: 10px; background: #f8f1f4; }
+.life-moment-card + .life-moment-card { margin-top: 8px; }
+.life-moment-card textarea { grid-column: 1 / -2; }
+.life-moment-card > button { grid-column: -2 / -1; grid-row: 2; align-self: end; padding: 8px; border: 0; background: none; color: #a14c3b; cursor: pointer; font-size: 9px; font-weight: 750; }
+.life-moment-title { font-weight: 750; }
+.life-month-manager, .life-dream-manager { max-width: 1100px; }
+.life-month-manager .card-heading > input { width: auto; padding: 7px 9px; }
+.life-month-create { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; margin-bottom: 18px; }
+.life-month-create label { display: flex; align-items: center; gap: 6px; padding: 0 8px; white-space: nowrap; }
+.life-month-create label input { width: 15px; height: 15px; margin: 0; accent-color: #a85f7d; }
+.life-manager-list, .life-dream-list { display: grid; gap: 8px; }
+.life-manager-list > div { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto auto auto auto; gap: 8px; align-items: center; padding: 9px; border: 1px solid var(--line); border-radius: 10px; background: #fbfbf8; }
+.life-manager-list > div.complete { border-color: #dbc2cd; background: #f7eef2; }
+.life-list-mark { color: #a85f7d; font-size: 16px; text-align: center; }
+.life-manager-list label { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.life-manager-list label input { width: 14px; height: 14px; margin: 0; accent-color: #a85f7d; }
+.life-manager-list .life-schedule-date { padding: 5px 7px; border-radius: 7px; background: #f7eef2; color: #7f4f63; font-size: 8px; font-weight: 750; }
+.life-manager-list .life-schedule-date input { width: 112px; height: auto; padding: 3px; border: 0; background: transparent; font-size: 8px; }
+.life-manager-list button, .life-dream-list button, .realised-dreams button { padding: 7px 9px; border: 1px solid #d8c4cc; border-radius: 7px; background: #f8f0f3; color: #7f4f63; cursor: pointer; font-size: 9px; font-weight: 750; }
+.life-lived-label { color: #8f5870; font-size: 8px; white-space: nowrap; }
+.danger-link { border: 0 !important; background: none !important; color: #a14c3b !important; }
+.life-empty-state { display: grid; gap: 5px; padding: 32px 16px; border: 1px dashed #d6c5cc; border-radius: 11px; color: var(--muted); text-align: center; }
+.life-empty-state strong { color: var(--ink); font-size: 13px; }
+.life-empty-state span { font-size: 10px; }
+.life-dream-create { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; margin-bottom: 18px; }
+.life-dream-list > div { display: grid; grid-template-columns: 25px minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 9px; border-radius: 10px; background: #f7f3ed; }
+.life-dream-list > div.complete { background: #f2e9ed; }
+.life-dream-checkbox { width: 16px; height: 16px; margin: 0 auto; accent-color: #a85f7d; cursor: pointer; }
+.life-dream-hint { color: var(--muted); font-size: 8px; white-space: nowrap; }
+.realised-dreams { display: grid; gap: 7px; margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--line); }
+.realised-dreams > div { display: grid; grid-template-columns: 24px 1fr auto; gap: 8px; align-items: center; padding: 8px; color: #62726a; font-size: 10px; }
+.realised-dreams > div > span { color: var(--green); font-weight: 800; }
+.life-source-form { display: grid; grid-template-columns: 1fr 150px; gap: 8px; margin: 15px 0 18px; padding: 15px; border: 1px solid #dcc4ce; border-radius: 12px; background: #f8f0f3; }
+.life-source-heading { grid-column: 1 / -1; display: flex; justify-content: space-between; gap: 15px; }
+.life-source-heading h3 { margin: 4px 0 0; font: 750 16px 'Segoe UI', sans-serif; }
+.life-source-heading button { padding: 0; border: 0; background: none; color: #8f5870; cursor: pointer; font-size: 9px; }
+.life-source-form textarea { grid-column: 1 / -1; }
+.life-source-form .primary { grid-column: 1 / -1; justify-self: start; }
 .boards-hero { margin-bottom: 25px; }
 .board-create-card { margin-bottom: 14px; }
 .board-create-card form { display: grid; grid-template-columns: minmax(0, 1fr) 180px auto; gap: 8px; }
@@ -681,6 +768,13 @@ label input, label select, label textarea { display: block; margin-top: 6px; }
   .project-metric-grid { grid-template-columns: 1fr 1fr; }
   .project-section-heading { align-items: start; flex-direction: column; gap: 6px; }
   .project-section-heading > span { max-width: none; text-align: left; }
+  .life-moment-card { grid-template-columns: minmax(0, 1fr) 125px; }
+  .life-moment-card textarea { grid-column: 1 / -1; }
+  .life-moment-card > button { grid-column: 2; grid-row: auto; justify-self: end; }
+  .life-manager-list > div { grid-template-columns: 24px minmax(0, 1fr) auto; }
+  .life-manager-list > div label { grid-column: 2; }
+  .life-manager-list > div .life-schedule-date { grid-column: 2 / -1; justify-self: start; }
+  .life-manager-list > div .life-lived-label, .life-manager-list > div .danger-link { grid-column: 3; }
 }
 
 @media (max-width: 580px) {
@@ -735,6 +829,15 @@ label input, label select, label textarea { display: block; margin-top: 6px; }
   .routine-manager-list > div, .routine-manager-list > div.daily-definition { grid-template-columns: 54px minmax(0, 1fr) auto; }
   .routine-manager-list > div.weekly-definition label { grid-column: 2 / -1; justify-self: start; }
   .motto-create-form, .motto-manager-list > div { grid-template-columns: 1fr; }
+  .life-tabs { width: 100%; overflow-x: auto; }
+  .life-tabs button { flex: 1; white-space: nowrap; }
+  .life-month-create, .life-dream-create, .life-source-form { grid-template-columns: 1fr; }
+  .life-month-create label, .life-source-heading, .life-source-form textarea, .life-source-form .primary { grid-column: auto; }
+  .life-manager-list > div, .life-dream-list > div { grid-template-columns: 24px minmax(0, 1fr); }
+  .life-manager-list > div > :not(.life-list-mark):not(input), .life-dream-list > div > button, .life-dream-list > div > span { grid-column: 2; justify-self: start; }
+  .life-moment-card { grid-template-columns: 1fr; }
+  .life-moment-card textarea, .life-moment-card > button { grid-column: auto; }
+  .life-moment-card > button { justify-self: start; }
   .board-create-card form, .board-toolbar form { grid-template-columns: 1fr; }
   .board-column { width: 260px; }
   .manage-project-row { grid-template-columns: 32px minmax(100px, 1fr) auto auto; }

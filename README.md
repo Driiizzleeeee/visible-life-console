@@ -28,6 +28,7 @@ You do not need to enter your whole life before the dashboard becomes useful.
 - **Routines** separately manages daily tasks and weekly frequency targets, with a dated history for reviewing, backfilling, or undoing checks. Daily Tasks, Weekly Targets, and Daily Essentials can all be reordered by drag-and-drop, and Dashboard uses the same order.
 - **Boards** independently holds temporary errands, life ideas, and leisure collections, with multiple boards, a priority-matrix template, custom columns, completion, and within/across-column dragging.
 - **Mottos** manages reminders you want to see repeatedly. Dashboard preserves line breaks, supports `**bold text**`, and lets the card grow naturally while gently reducing the font size for longer entries. A shuffle-bag rotation shows every motto once per cycle and, when possible, avoids anything shown in the previous four days.
+- **Life** keeps three deliberately non-productive collections together: month-specific or gently recurring invitations, long-term Someday Dreams, and a dated Life Moments archive with optional places and reflections. Dashboard offers quick capture without turning these records into obligations.
 - **Focus** holds the current task and next action. Related problems can be parked or entered intentionally without losing the return point.
 - **Manage** uses a compact category list. Category names can be edited, empty categories can be deleted, and projects can be moved by drag-and-drop or a category selector. Selecting a project opens a right-side detail drawer for direct deliverables and Supporting Work, with delivery progress, total investment, estimated remaining time, and supporting investment.
 
@@ -50,12 +51,14 @@ A later multi-device version can replace local storage with a Spring Boot API an
 - The project drawer shows delivery progress, total investment, delivery remaining, and supporting investment; every task includes a Description field
 - Parent roll-ups for estimated, logged, and remaining time, with collapsible task trees and protected subtree deletion
 - One daily priority
-- A monthly calendar with dated and optionally timed plans
+- A monthly calendar with dated, optionally timed, and colour-coded plans
 - Daily tasks and capped weekly frequency targets, backfillable dated records, a today summary plus per-day completion counts in the calendar, and fixed-height one-month/three-month/six-month/year activity heatmaps
 - Calendar plans can be added, edited, or deleted; deleting a routine also removes its completion records so statistics do not retain orphaned data
 - A daily motto with preserved line breaks, lightweight `**bold**` formatting, adaptive presentation, and a complete shuffled rotation of the motto collection
 - Freely editable Daily Essentials and a gentle completion banner
 - Flexible Board completions appear as a third Items count in the calendar but do not affect Routine Activity
+- A Dashboard `Life in [month]` panel for pressure-free monthly invitations, quick dream capture, and direct moment recording
+- A separate Life archive for dated moments, optional places and reflections, recurring or one-month invitations, and long-term Someday Dreams; only recorded moments are counted, with no goals, rates, streaks, or Routine Activity impact
 - Next action, expected time, and starting difficulty
 - Parked and intentional task branches with a return cue
 - Manual activity logging and a timer
@@ -94,6 +97,7 @@ Visible Life Console 是一个本地优先的“外置工作记忆”工具。�
 - **Routines**：分开管理每日任务与“每周完成几次”的目标，并按日期查看、补记或撤销历史记录；Daily Tasks、Weekly Targets 和 Daily Essentials 都可以拖动排序，Dashboard 会使用相同顺序。
 - **Boards**：独立管理临时事项、生活想法和消遣清单；支持多看板、四象限模板、自定义列、卡片完成以及组内／跨组拖动。
 - **Mottos**：管理希望反复看到的标语。Dashboard 会保留换行，支持用 `**文字**` 加粗；卡片随内容自然增高，较长内容会适度缩小字号。系统采用无重复随机轮换，每轮让所有标语各出现一次，并在条件允许时避开前四天出现过的标语。
+- **Life**：统一管理三个不以生产力衡量的部分——只属于某个月或每月温和出现的生活邀请、长期 Someday Dreams，以及带日期并可选填写地点和随笔的 Life Moments 档案。Dashboard 提供快速记录入口，但不会把它们变成必须完成的责任。
 - **Focus**：设置当前任务和下一步行动；发现关联问题时，可以暂存支线或主动切换，并在完成后返回原任务。
 - **Manage**：使用精简分类列表管理项目；点击大类名称可以重命名或删除空的大类，项目可以拖动或通过下拉框移动到其他大类。点击项目后从右侧抽屉管理直接交付任务与 Supporting Work，并查看交付进度、累计投入、预计剩余和支持性投入。
 
@@ -116,12 +120,14 @@ Visible Life Console 是一个本地优先的“外置工作记忆”工具。�
 - 项目抽屉集中显示交付进度、累计投入、交付预计剩余和支持性投入；每个任务都支持 Description
 - 父任务自动汇总预计时间、实际工作记录和剩余时间；任务树支持展开、收起与安全删除
 - 每日最高优先级 Today’s #1
-- 支持日期、可选时间和每日安排的本地月历
+- 支持日期、可选时间和自定义事项颜色的本地月历
 - 每日任务与不限固定星期几的每周次数目标（达到目标后停止增加）、可回填的每日记录、日历顶部的今日摘要、每个日期格的历史完成数量，以及固定高度的一个月／三个月／半年／一年完成方块图
 - 日历计划支持新增、修改和删除；删除重复任务会同时清除其完成记录，避免统计残留
 - 保留换行、支持轻量 `**加粗**` 格式并自适应展示的每日标语，以及保证完整轮换的标语库
 - 可自由增减的 Daily Essentials，以及全部完成后的温和结束提示
 - Flexible Boards 完成数量作为日历中的第三类 Items 记录，但不计入 Routine Activity
+- Dashboard 日历右下角的 `Life in [月份]` 模块，用于无压力的每月邀请、快速保存梦想和直接记录生活时刻
+- 独立 Life 档案：保存带日期的 Moments、可选地点与随笔、每月重复或单月邀请以及长期 Someday Dreams；只描述已经留下的时刻，不设置目标、完成率、连续记录，也不影响 Routine Activity
 - 下一步行动、预计用时和开始前感受
 - 任务支线的暂存、主动切换与返回提醒
 - 手动时间记录和开始／停止计时

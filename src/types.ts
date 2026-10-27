@@ -127,7 +127,11 @@ export interface CalendarEvent {
   title: string
   date: string
   time?: string
+  color?: CalendarEventColor
+  lifeItemId?: string
 }
+
+export type CalendarEventColor = 'slate' | 'blue' | 'green' | 'yellow' | 'orange' | 'red' | 'purple' | 'pink'
 
 export type RoutineFrequency = 'daily' | 'weekly'
 
@@ -152,6 +156,30 @@ export interface Motto {
 export interface MottoHistory {
   date: string
   mottoId: string
+}
+
+export interface MonthlyLifeItem {
+  id: string
+  title: string
+  recursMonthly: boolean
+  month?: string
+}
+
+export interface SomedayDream {
+  id: string
+  title: string
+  createdAt: string
+  realisedMomentId?: string
+}
+
+export interface LifeMoment {
+  id: string
+  title: string
+  date: string
+  place?: string
+  reflection?: string
+  source?: 'monthly' | 'dream' | 'direct'
+  sourceId?: string
 }
 
 export interface EssentialTask {
@@ -218,7 +246,7 @@ export interface FocusPlan {
 }
 
 export interface AppData {
-  version: 10
+  version: 11
   categories: ProjectCategory[]
   projects: Project[]
   activities: Activity[]
@@ -234,6 +262,9 @@ export interface AppData {
   essentialTasks: EssentialTask[]
   essentialCompletions: EssentialCompletion[]
   boards: LifeBoard[]
+  monthlyLifeItems: MonthlyLifeItem[]
+  somedayDreams: SomedayDream[]
+  lifeMoments: LifeMoment[]
   activeTimer?: ActiveTimer
   focusPlan?: FocusPlan
 }

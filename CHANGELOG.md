@@ -65,6 +65,19 @@ Visible Life Console is developed iteratively from real daily use. This log high
 - An estimate can no longer be reduced below the actual time already recorded.
 - Quick logging and detailed worklog editing now show the available time and explain when the estimate must be increased.
 
+### 2026-10-27
+
+#### Added
+
+- Linked Life This Month invitations to the monthly calendar with a distinct heart marker and scheduling from either view.
+- Added reversible completion checkboxes for Someday Dreams while preserving recorded Life Moments.
+- Split the Life area into This Month, Moments, Someday Dreams, and a standalone Life Archive.
+
+#### Changed
+
+- Life now opens directly to the Life Archive, while Moment creation remains in its own view.
+- Clarified the difference between ordinary calendar events and Life invitations without turning calendar plans into completion tasks.
+
 ## 中文
 
 Visible Life Console 会根据真实的日常使用体验持续迭代。本日志只记录有意义的新增功能、调整和修复，不罗列每一项细小的实现改动。
@@ -127,3 +140,16 @@ Visible Life Console 会根据真实的日常使用体验持续迭代。本日�
 - 最底层任务的实际投入时间不能再超过预计时间。
 - 预计时间不能再调低到小于已经记录的实际投入时间。
 - 快速记录和详细时间记录现在会显示可用时间，并在需要增加预计时间时给出明确提示。
+
+### 2026-10-27
+
+#### 新增
+
+- 将 Life This Month 邀请与月历关联，并使用独立的心形标记；现在可以从日历或 Life 页面安排日期。
+- 为 Someday Dreams 新增可取消的完成勾选，同时保留已经记录的 Life Moments。
+- 将 Life 区域拆分为 This Month、Moments、Someday Dreams 和独立的 Life Archive。
+
+#### 调整
+
+- 打开 Life 时现在默认显示 Life Archive，Moment 新增功能则保留在单独页面中。
+- 更清楚地区分普通日历事件与 Life 邀请，同时不把日历安排变成需要完成的打卡任务。
