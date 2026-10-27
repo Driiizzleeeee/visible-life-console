@@ -176,6 +176,7 @@ main { max-width: 1760px; margin: auto; padding: 50px 24px 80px; }
 .day-events { display: grid; gap: 3px; min-width: 0; }
 .event-chip { display: block; min-width: 0; padding: 3px 5px; border-left: 3px solid var(--green); border-radius: 3px; background: #e6efeb; color: #31493f; font-size: 8px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .event-chip time { margin-right: 4px; color: var(--green); font-variant-numeric: tabular-nums; }
+.life-event-heart { margin-right: 4px; color: #a85f7d; font-weight: 900; }
 .day-events > small { color: var(--muted); font-size: 8px; }
 .day-agenda { min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: #f6f4ed; }
 .agenda-title h3 { margin: 5px 0 15px; font: 750 18px 'Segoe UI', sans-serif; letter-spacing: -.025em; }
@@ -189,7 +190,13 @@ main { max-width: 1760px; margin: auto; padding: 50px 24px 80px; }
 .agenda-event-actions button:first-child { color: var(--green); }
 .agenda-form { display: grid; grid-template-columns: 1fr 96px; gap: 7px; margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--line); }
 .agenda-form input { min-width: 0; }
-.agenda-form > input:first-child, .agenda-form button { grid-column: 1 / -1; }
+.agenda-form > input[aria-label="Plan title"], .agenda-form > select, .agenda-form > button { grid-column: 1 / -1; }
+.calendar-event-type { grid-column: 1 / -1; min-width: 0; margin: 0; padding: 0; border: 0; }
+.calendar-event-type legend { margin-bottom: 7px; color: var(--muted); font-size: 8px; font-weight: 750; text-transform: uppercase; letter-spacing: .08em; }
+.calendar-event-type > div { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.agenda-form .calendar-event-type button { grid-column: auto; padding: 7px; border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--muted); cursor: pointer; font-size: 8px; font-weight: 750; }
+.agenda-form .calendar-event-type button.selected { border-color: #b97994; background: #f6e9ee; color: #7f4f63; }
+.calendar-event-type-help { grid-column: 1 / -1; margin: -1px 0 2px; color: var(--muted); font-size: 8px; line-height: 1.45; }
 .agenda-edit-notice { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; padding: 7px 9px; border-radius: 7px; background: #e6efeb; color: var(--green); font-size: 9px; font-weight: 750; }
 .agenda-edit-notice button { grid-column: auto; padding: 0; border: 0; background: none; color: #a14c3b; cursor: pointer; font-size: 8px; }
 .calendar-color-picker { grid-column: 1 / -1; min-width: 0; margin: 0; padding: 0; border: 0; }
@@ -452,8 +459,7 @@ label input, label select, label textarea { display: block; margin-top: 6px; }
 .life-tabs { display: flex; width: fit-content; gap: 4px; margin-bottom: 16px; padding: 4px; border-radius: 11px; background: #e4e8e5; }
 .life-tabs button { padding: 9px 15px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; font-size: 10px; font-weight: 750; }
 .life-tabs button.active { background: var(--paper); color: var(--ink); box-shadow: 0 3px 10px rgba(38,52,58,.08); }
-.life-page-grid { display: grid; grid-template-columns: minmax(280px, .38fr) minmax(0, .62fr); gap: 18px; align-items: start; }
-.life-create-card { position: sticky; top: 94px; }
+.life-create-card { width: min(100%, 760px); }
 .life-gentle-copy { margin: -5px 0 17px; color: var(--muted); font-size: 10px; line-height: 1.55; }
 .life-moment-form { display: grid; gap: 9px; }
 .life-moment-form .primary { justify-self: start; }
@@ -472,11 +478,13 @@ label input, label select, label textarea { display: block; margin-top: 6px; }
 .life-month-create label { display: flex; align-items: center; gap: 6px; padding: 0 8px; white-space: nowrap; }
 .life-month-create label input { width: 15px; height: 15px; margin: 0; accent-color: #a85f7d; }
 .life-manager-list, .life-dream-list { display: grid; gap: 8px; }
-.life-manager-list > div { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto auto auto; gap: 8px; align-items: center; padding: 9px; border: 1px solid var(--line); border-radius: 10px; background: #fbfbf8; }
+.life-manager-list > div { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto auto auto auto; gap: 8px; align-items: center; padding: 9px; border: 1px solid var(--line); border-radius: 10px; background: #fbfbf8; }
 .life-manager-list > div.complete { border-color: #dbc2cd; background: #f7eef2; }
 .life-list-mark { color: #a85f7d; font-size: 16px; text-align: center; }
 .life-manager-list label { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
 .life-manager-list label input { width: 14px; height: 14px; margin: 0; accent-color: #a85f7d; }
+.life-manager-list .life-schedule-date { padding: 5px 7px; border-radius: 7px; background: #f7eef2; color: #7f4f63; font-size: 8px; font-weight: 750; }
+.life-manager-list .life-schedule-date input { width: 112px; height: auto; padding: 3px; border: 0; background: transparent; font-size: 8px; }
 .life-manager-list button, .life-dream-list button, .realised-dreams button { padding: 7px 9px; border: 1px solid #d8c4cc; border-radius: 7px; background: #f8f0f3; color: #7f4f63; cursor: pointer; font-size: 9px; font-weight: 750; }
 .life-lived-label { color: #8f5870; font-size: 8px; white-space: nowrap; }
 .danger-link { border: 0 !important; background: none !important; color: #a14c3b !important; }
@@ -485,7 +493,9 @@ label input, label select, label textarea { display: block; margin-top: 6px; }
 .life-empty-state span { font-size: 10px; }
 .life-dream-create { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; margin-bottom: 18px; }
 .life-dream-list > div { display: grid; grid-template-columns: 25px minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 9px; border-radius: 10px; background: #f7f3ed; }
-.life-dream-list > div > span { color: #a77922; font-size: 16px; text-align: center; }
+.life-dream-list > div.complete { background: #f2e9ed; }
+.life-dream-checkbox { width: 16px; height: 16px; margin: 0 auto; accent-color: #a85f7d; cursor: pointer; }
+.life-dream-hint { color: var(--muted); font-size: 8px; white-space: nowrap; }
 .realised-dreams { display: grid; gap: 7px; margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--line); }
 .realised-dreams > div { display: grid; grid-template-columns: 24px 1fr auto; gap: 8px; align-items: center; padding: 8px; color: #62726a; font-size: 10px; }
 .realised-dreams > div > span { color: var(--green); font-weight: 800; }
@@ -741,13 +751,12 @@ label input, label select, label textarea { display: block; margin-top: 6px; }
   .project-metric-grid { grid-template-columns: 1fr 1fr; }
   .project-section-heading { align-items: start; flex-direction: column; gap: 6px; }
   .project-section-heading > span { max-width: none; text-align: left; }
-  .life-page-grid { grid-template-columns: 1fr; }
-  .life-create-card { position: static; }
   .life-moment-card { grid-template-columns: minmax(0, 1fr) 125px; }
   .life-moment-card textarea { grid-column: 1 / -1; }
   .life-moment-card > button { grid-column: 2; grid-row: auto; justify-self: end; }
   .life-manager-list > div { grid-template-columns: 24px minmax(0, 1fr) auto; }
   .life-manager-list > div label { grid-column: 2; }
+  .life-manager-list > div .life-schedule-date { grid-column: 2 / -1; justify-self: start; }
   .life-manager-list > div .life-lived-label, .life-manager-list > div .danger-link { grid-column: 3; }
 }
 
@@ -808,7 +817,7 @@ label input, label select, label textarea { display: block; margin-top: 6px; }
   .life-month-create, .life-dream-create, .life-source-form { grid-template-columns: 1fr; }
   .life-month-create label, .life-source-heading, .life-source-form textarea, .life-source-form .primary { grid-column: auto; }
   .life-manager-list > div, .life-dream-list > div { grid-template-columns: 24px minmax(0, 1fr); }
-  .life-manager-list > div > :not(.life-list-mark):not(input), .life-dream-list > div > button { grid-column: 2; justify-self: start; }
+  .life-manager-list > div > :not(.life-list-mark):not(input), .life-dream-list > div > button, .life-dream-list > div > span { grid-column: 2; justify-self: start; }
   .life-moment-card { grid-template-columns: 1fr; }
   .life-moment-card textarea, .life-moment-card > button { grid-column: auto; }
   .life-moment-card > button { justify-self: start; }

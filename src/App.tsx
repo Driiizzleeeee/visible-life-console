@@ -593,6 +593,8 @@ function MonthCalendar({ data, setData, openLife, setNotice }: {
   const [eventTitle, setEventTitle] = useState('')
   const [eventTime, setEventTime] = useState('')
   const [eventColor, setEventColor] = useState<CalendarEventColor>('blue')
+  const [eventType, setEventType] = useState<'regular' | 'life'>('regular')
+  const [eventLifeItemId, setEventLifeItemId] = useState('')
   const [editingEventId, setEditingEventId] = useState<string>()
 
   const days = useMemo(() => {
@@ -611,6 +613,7 @@ function MonthCalendar({ data, setData, openLife, setNotice }: {
   const selectedEvents = data.calendarEvents
     .filter((item) => item.date === selectedDate)
     .sort((a, b) => (a.time ?? '99:99').localeCompare(b.time ?? '99:99'))
+  const selectedMonthLifeItems = data.monthlyLifeItems.filter((item) => item.recursMonthly || item.month === selectedDate.slice(0, 7))
   const routineCountsByDate = useMemo(() => {
     const frequencies = new Map(data.routineTasks.map((task) => [task.id, task.frequency]))
     const summaries = new Map<string, { dailyIds: Set<string>; weekly: number }>()
@@ -652,6 +655,8 @@ function MonthCalendar({ data, setData, openLife, setNotice }: {
     setEventTitle('')
     setEventTime('')
     setEventColor('blue')
+    setEventType('regular')
+    setEventLifeItemId('')
   }
 
   function editEvent(item: CalendarEvent) {
@@ -659,6 +664,8 @@ function MonthCalendar({ data, setData, openLife, setNotice }: {
     setEventTitle(item.title)
     setEventTime(item.time ?? '')
     setEventColor(item.color ?? 'green')
+    setEventType(item.lifeItemId ? 'life' : 'regular')
+    setEventLifeItemId(item.lifeItemId ?? '')
   }
 
   function cancelEventEdit() {
@@ -666,6 +673,8 @@ function MonthCalendar({ data, setData, openLife, setNotice }: {
     setEventTitle('')
     setEventTime('')
     setEventColor('blue')
+    setEventType('regular')
+    setEventLifeItemId('')
   }
 
   function deleteEvent(item: CalendarEvent) {
@@ -677,16 +686,27 @@ function MonthCalendar({ data, setData, openLife, setNotice }: {
     event.preventDefault()
     const title = eventTitle.trim()
     if (!title) return
-    if (editingEventId) {
-      setData((current) => ({ ...current, calendarEvents: current.calendarEvents.map((item) => item.id === editingEventId ? { ...item, title, date: selectedDate, time: eventTime || undefined, color: eventColor } : item) }))
-      setEditingEventId(undefined)
-    } else {
-      const calendarEvent: CalendarEvent = { id: id(), title, date: selectedDate, color: eventColor, ...(eventTime ? { time: eventTime } : {}) }
-      setData((current) => ({ ...current, calendarEvents: [...current.calendarEvents, calendarEvent] }))
-    }
+    const linkedLifeItemId = eventType === 'life' ? eventLifeItemId || id() : undefined
+    setData((current) => {
+      let monthlyLifeItems = current.monthlyLifeItems
+      if (linkedLifeItemId) {
+        const exists = monthlyLifeItems.some((item) => item.id === linkedLifeItemId)
+        monthlyLifeItems = exists
+          ? monthlyLifeItems.map((item) => item.id === linkedLifeItemId ? { ...item, title } : item)
+          : [...monthlyLifeItems, { id: linkedLifeItemId, title, recursMonthly: false, month: selectedDate.slice(0, 7) }]
+      }
+      const eventDetails = { title, date: selectedDate, time: eventTime || undefined, color: eventColor, lifeItemId: linkedLifeItemId }
+      const calendarEvents = editingEventId
+        ? current.calendarEvents.map((item) => item.id === editingEventId ? { ...item, ...eventDetails } : item)
+        : [...current.calendarEvents, { id: id(), ...eventDetails }]
+      return { ...current, monthlyLifeItems, calendarEvents }
+    })
+    setEditingEventId(undefined)
     setEventTitle('')
     setEventTime('')
     setEventColor('blue')
+    setEventType('regular')
+    setEventLifeItemId('')
   }
 
   return <article className="card calendar-card">
@@ -735,7 +755,7 @@ function MonthCalendar({ data, setData, openLife, setNotice }: {
             <span className="day-events">
               {dayEvents.slice(0, 3).map((item) => {
                 const palette = calendarEventPalette(item.color)
-                return <span className="event-chip" style={{ borderLeftColor: palette.accent, backgroundColor: palette.soft, color: palette.text }} key={item.id}>{item.time && <time style={{ color: palette.accent }}>{item.time}</time>}{item.title}</span>
+                return <span className={`event-chip ${item.lifeItemId ? 'life-event' : ''}`} style={{ borderLeftColor: palette.accent, backgroundColor: palette.soft, color: palette.text }} key={item.id}>{item.lifeItemId && <span className="life-event-heart" aria-label="Life this month">♥</span>}{item.time && <time style={{ color: palette.accent }}>{item.time}</time>}{item.title}</span>
               })}
               {dayEvents.length > 3 && <small>+{dayEvents.length - 3} more</small>}
             </span>
@@ -748,13 +768,24 @@ function MonthCalendar({ data, setData, openLife, setNotice }: {
         <div className="agenda-list">
           {selectedEvents.length === 0 ? <p className="agenda-empty">Nothing planned yet.</p> : selectedEvents.map((item) => {
             const palette = calendarEventPalette(item.color)
-            return <div className="agenda-event" style={{ borderLeftColor: palette.accent, backgroundColor: palette.soft }} key={item.id}>
-            <time style={{ color: palette.accent }}>{item.time || 'Any time'}</time><span style={{ color: palette.text }}>{item.title}</span>
+            return <div className={`agenda-event ${item.lifeItemId ? 'life-event' : ''}`} style={{ borderLeftColor: palette.accent, backgroundColor: palette.soft }} key={item.id}>
+            <time style={{ color: palette.accent }}>{item.time || 'Any time'}</time><span style={{ color: palette.text }}>{item.lifeItemId && <span className="life-event-heart" aria-label="Life this month">♥</span>}{item.title}</span>
             <span className="agenda-event-actions"><button aria-label={`Edit ${item.title}`} onClick={() => editEvent(item)}>Edit</button><button aria-label={`Delete ${item.title}`} onClick={() => deleteEvent(item)}>×</button></span>
           </div>})}
         </div>
         <form className={`agenda-form ${editingEventId ? 'editing' : ''}`} onSubmit={addEvent}>
           {editingEventId && <div className="agenda-edit-notice"><span>Editing plan</span><button type="button" onClick={cancelEventEdit}>Cancel</button></div>}
+          <fieldset className="calendar-event-type"><legend>Plan type</legend><div>
+            <button type="button" className={eventType === 'regular' ? 'selected' : ''} onClick={() => { setEventType('regular'); setEventLifeItemId('') }}>Regular event</button>
+            <button type="button" className={eventType === 'life' ? 'selected' : ''} onClick={() => { setEventType('life'); setEventColor('pink') }}>♥ Life invitation</button>
+          </div></fieldset>
+          <p className="calendar-event-type-help">{eventType === 'life' ? 'Linked to Life this month. Scheduling it does not mark it as lived.' : 'A calendar-only plan with no completion state.'}</p>
+          {eventType === 'life' && selectedMonthLifeItems.length > 0 && <select aria-label="Link a Life this month invitation" value={eventLifeItemId} onChange={(event) => {
+            const nextId = event.target.value
+            setEventLifeItemId(nextId)
+            const linkedItem = selectedMonthLifeItems.find((item) => item.id === nextId)
+            if (linkedItem) setEventTitle(linkedItem.title)
+          }}><option value="">Create a new Life invitation</option>{selectedMonthLifeItems.map((item) => <option value={item.id} key={item.id}>{item.title}</option>)}</select>}
           <input aria-label="Plan title" value={eventTitle} onChange={(event) => setEventTitle(event.target.value)} placeholder={editingEventId ? 'Edit this plan' : 'Add a plan for this day'} />
           <input aria-label="Plan time" type="time" value={eventTime} onChange={(event) => setEventTime(event.target.value)} />
           <fieldset className="calendar-color-picker"><legend>Colour</legend><div>{CALENDAR_EVENT_COLORS.map((option) => <button
@@ -840,7 +871,7 @@ function LifeMonthPanel({ data, setData, month, selectedDate, openLife, setNotic
   }
 
   return <section className="life-month-panel">
-    <div className="life-month-heading"><div><p className="eyebrow">Life in {monthLabel}</p><h3>Gentle invitations</h3></div><button type="button" onClick={openLife}>Open Life →</button></div>
+    <div className="life-month-heading"><div><p className="eyebrow">Life in {monthLabel}</p></div><button type="button" onClick={openLife}>Open Life →</button></div>
     {items.length === 0 ? <p className="life-month-empty">Nothing is required here. Add something that might bring a little colour to this month.</p> : <div className="life-month-list">{items.map((item) => {
       const completed = completedMoment(item.id)
       return <label className={completed ? 'complete' : ''} key={item.id}><input type="checkbox" checked={Boolean(completed)} onChange={() => toggleItem(item)} /><span>{item.title}{item.recursMonthly && <small>Every month</small>}</span></label>
@@ -863,7 +894,7 @@ function LifePage({ data, setData, setNotice }: {
   setData: React.Dispatch<React.SetStateAction<AppData>>
   setNotice: (value: string) => void
 }) {
-  const [tab, setTab] = useState<'moments' | 'month' | 'dreams'>('moments')
+  const [tab, setTab] = useState<'month' | 'moments' | 'dreams' | 'archive'>('archive')
   const [lifeMonth, setLifeMonth] = useState(localMonth())
   const [momentYear, setMomentYear] = useState(String(new Date().getFullYear()))
   const [newMoment, setNewMoment] = useState({ title: '', date: localDate(), place: '', reflection: '' })
@@ -877,7 +908,8 @@ function LifePage({ data, setData, setNotice }: {
   const momentMonths = Array.from(new Set(yearMoments.map((moment) => moment.date.slice(0, 7))))
   const monthlyItems = data.monthlyLifeItems.filter((item) => item.recursMonthly || item.month === lifeMonth)
   const activeDreams = data.somedayDreams.filter((dream) => !dream.realisedMomentId)
-  const realisedDreams = data.somedayDreams.filter((dream) => dream.realisedMomentId)
+  const [lifeYearNumber, lifeMonthNumber] = lifeMonth.split('-').map(Number)
+  const lifeMonthLastDate = `${lifeMonth}-${String(new Date(lifeYearNumber, lifeMonthNumber, 0).getDate()).padStart(2, '0')}`
 
   function addMoment(event: FormEvent) {
     event.preventDefault()
@@ -917,12 +949,35 @@ function LifePage({ data, setData, setNotice }: {
   }
 
   function updateMonthlyItem(itemId: string, patch: Partial<MonthlyLifeItem>) {
-    setData((current) => ({ ...current, monthlyLifeItems: current.monthlyLifeItems.map((item) => item.id === itemId ? { ...item, ...patch } : item) }))
+    setData((current) => ({
+      ...current,
+      monthlyLifeItems: current.monthlyLifeItems.map((item) => item.id === itemId ? { ...item, ...patch } : item),
+      calendarEvents: typeof patch.title === 'string'
+        ? current.calendarEvents.map((event) => event.lifeItemId === itemId ? { ...event, title: patch.title as string } : event)
+        : current.calendarEvents,
+    }))
+  }
+
+  function scheduleMonthlyItem(item: MonthlyLifeItem, date: string) {
+    setData((current) => {
+      const existing = current.calendarEvents.find((event) => event.lifeItemId === item.id && event.date.startsWith(lifeMonth))
+      if (!date) {
+        return { ...current, calendarEvents: current.calendarEvents.filter((event) => event.id !== existing?.id) }
+      }
+      if (existing) {
+        return { ...current, calendarEvents: current.calendarEvents.map((event) => event.id === existing.id ? { ...event, date, title: item.title } : event) }
+      }
+      return { ...current, calendarEvents: [...current.calendarEvents, { id: id(), title: item.title, date, color: 'pink', lifeItemId: item.id }] }
+    })
   }
 
   function removeMonthlyItem(item: MonthlyLifeItem) {
     if (!window.confirm(`Delete “${item.title}”? Existing Life Moments will remain.`)) return
-    setData((current) => ({ ...current, monthlyLifeItems: current.monthlyLifeItems.filter((entry) => entry.id !== item.id) }))
+    setData((current) => ({
+      ...current,
+      monthlyLifeItems: current.monthlyLifeItems.filter((entry) => entry.id !== item.id),
+      calendarEvents: current.calendarEvents.map((event) => event.lifeItemId === item.id ? { ...event, lifeItemId: undefined } : event),
+    }))
   }
 
   function addDream(event: FormEvent) {
@@ -937,9 +992,23 @@ function LifePage({ data, setData, setNotice }: {
     setData((current) => ({ ...current, somedayDreams: current.somedayDreams.map((dream) => dream.id === dreamId ? { ...dream, title } : dream) }))
   }
 
+  function undoDream(dream: SomedayDream) {
+    if (!dream.realisedMomentId) return
+    setData((current) => ({
+      ...current,
+      somedayDreams: current.somedayDreams.map((item) => item.id === dream.id ? { ...item, realisedMomentId: undefined } : item),
+      lifeMoments: current.lifeMoments.map((moment) => moment.id === dream.realisedMomentId ? { ...moment, source: 'direct', sourceId: undefined } : moment),
+    }))
+    setNotice('Dream returned to Someday. The Life Moment was kept.')
+  }
+
   function removeDream(dream: SomedayDream) {
     if (!window.confirm(`Delete “${dream.title}” from Someday Dreams?`)) return
-    setData((current) => ({ ...current, somedayDreams: current.somedayDreams.filter((item) => item.id !== dream.id) }))
+    setData((current) => ({
+      ...current,
+      somedayDreams: current.somedayDreams.filter((item) => item.id !== dream.id),
+      lifeMoments: current.lifeMoments.map((moment) => moment.id === dream.realisedMomentId ? { ...moment, source: 'direct', sourceId: undefined } : moment),
+    }))
   }
 
   function beginSourceMoment(kind: 'monthly' | 'dream', sourceId: string, title: string, date = localDate()) {
@@ -982,25 +1051,14 @@ function LifePage({ data, setData, setNotice }: {
   return <>
     <section className="hero-row life-hero"><div><p className="eyebrow">Life</p><h1>Keep evidence that you lived.</h1><p className="muted">Invitations, dreams, and moments — never a productivity score.</p></div></section>
     <div className="life-tabs" role="tablist">
-      <button className={tab === 'moments' ? 'active' : ''} onClick={() => setTab('moments')}>Moments</button>
       <button className={tab === 'month' ? 'active' : ''} onClick={() => setTab('month')}>This Month</button>
+      <button className={tab === 'moments' ? 'active' : ''} onClick={() => setTab('moments')}>Moments</button>
       <button className={tab === 'dreams' ? 'active' : ''} onClick={() => setTab('dreams')}>Someday Dreams</button>
+      <button className={tab === 'archive' ? 'active' : ''} onClick={() => setTab('archive')}>Life Archive</button>
     </div>
 
-    {tab === 'moments' && <section className="life-page-grid">
-      <article className="card life-create-card">
-        <div className="card-heading"><div><span className="number">01</span><h2>Record a moment</h2></div></div>
-        <p className="life-gentle-copy">A title and date are enough. Everything else is optional.</p>
-        <form className="life-moment-form" onSubmit={addMoment}>
-          <input value={newMoment.title} onChange={(event) => setNewMoment((current) => ({ ...current, title: event.target.value }))} placeholder="What happened?" />
-          <input type="date" value={newMoment.date} onChange={(event) => setNewMoment((current) => ({ ...current, date: event.target.value }))} />
-          <input value={newMoment.place} onChange={(event) => setNewMoment((current) => ({ ...current, place: event.target.value }))} placeholder="Place (optional)" />
-          <textarea rows={4} value={newMoment.reflection} onChange={(event) => setNewMoment((current) => ({ ...current, reflection: event.target.value }))} placeholder="A few words, if you want…" />
-          <button className="primary">Save moment</button>
-        </form>
-      </article>
-      <article className="card life-archive-card">
-        <div className="card-heading"><div><span className="number">02</span><h2>Life archive</h2></div><select aria-label="Archive year" value={momentYear} onChange={(event) => setMomentYear(event.target.value)}>{yearOptions.map((year) => <option key={year}>{year}</option>)}</select></div>
+    {tab === 'archive' && <article className="card life-archive-card">
+        <div className="card-heading"><div><span className="number">01</span><h2>Life archive</h2></div><select aria-label="Archive year" value={momentYear} onChange={(event) => setMomentYear(event.target.value)}>{yearOptions.map((year) => <option key={year}>{year}</option>)}</select></div>
         <p className="life-year-summary">{yearMoments.length === 0 ? 'Nothing was recorded here. The year still belonged to you.' : `${yearMoments.length} moment${yearMoments.length === 1 ? '' : 's'} recorded in ${momentYear}.`}</p>
         <div className="life-archive">{momentMonths.map((month) => <section key={month}>
           <h3>{new Date(`${month}-01T00:00:00`).toLocaleDateString('en-AU', { month: 'long' })}</h3>
@@ -1012,8 +1070,19 @@ function LifePage({ data, setData, setNotice }: {
             <button onClick={() => removeMoment(moment)}>Delete</button>
           </article>)}
         </section>)}</div>
-      </article>
-    </section>}
+    </article>}
+
+    {tab === 'moments' && <article className="card life-create-card">
+        <div className="card-heading"><div><span className="number">01</span><h2>Record a moment</h2></div></div>
+        <p className="life-gentle-copy">A title and date are enough. Everything else is optional.</p>
+        <form className="life-moment-form" onSubmit={addMoment}>
+          <input value={newMoment.title} onChange={(event) => setNewMoment((current) => ({ ...current, title: event.target.value }))} placeholder="What happened?" />
+          <input type="date" value={newMoment.date} onChange={(event) => setNewMoment((current) => ({ ...current, date: event.target.value }))} />
+          <input value={newMoment.place} onChange={(event) => setNewMoment((current) => ({ ...current, place: event.target.value }))} placeholder="Place (optional)" />
+          <textarea rows={4} value={newMoment.reflection} onChange={(event) => setNewMoment((current) => ({ ...current, reflection: event.target.value }))} placeholder="A few words, if you want…" />
+          <button className="primary">Save moment</button>
+        </form>
+    </article>}
 
     {tab === 'month' && <section className="card life-month-manager">
       <div className="card-heading"><div><span className="number">01</span><h2>Life this month</h2></div><input aria-label="Life month" type="month" value={lifeMonth} onChange={(event) => setLifeMonth(event.target.value)} /></div>
@@ -1026,9 +1095,11 @@ function LifePage({ data, setData, setNotice }: {
       {sourceDraft?.kind === 'monthly' && sourceMomentForm}
       {monthlyItems.length === 0 ? <div className="life-empty-state"><strong>No invitations for this month.</strong><span>Nothing is missing and nothing is overdue.</span></div> : <div className="life-manager-list">{monthlyItems.map((item) => {
         const moment = data.lifeMoments.find((entry) => entry.source === 'monthly' && entry.sourceId === item.id && entry.date.startsWith(lifeMonth))
+        const scheduledEvent = data.calendarEvents.find((event) => event.lifeItemId === item.id && event.date.startsWith(lifeMonth))
         return <div className={moment ? 'complete' : ''} key={item.id}>
           <span className="life-list-mark">{moment ? '✓' : '○'}</span>
           <input value={item.title} onChange={(event) => updateMonthlyItem(item.id, { title: event.target.value })} />
+          <label className="life-schedule-date"><span>♥ Schedule</span><input type="date" min={`${lifeMonth}-01`} max={lifeMonthLastDate} value={scheduledEvent?.date ?? ''} onChange={(event) => scheduleMonthlyItem(item, event.target.value)} /></label>
           <label><input type="checkbox" checked={item.recursMonthly} onChange={(event) => updateMonthlyItem(item.id, { recursMonthly: event.target.checked, month: event.target.checked ? undefined : lifeMonth })} /> Every month</label>
           {!moment && <button onClick={() => beginSourceMoment('monthly', item.id, item.title, lifeMonth === localMonth() ? localDate() : `${lifeMonth}-01`)}>Record</button>}
           {moment && <span className="life-lived-label">Lived {moment.date}</span>}
@@ -1042,12 +1113,14 @@ function LifePage({ data, setData, setNotice }: {
       <p className="life-gentle-copy">Capture the thought first. No date, category, budget, or plan is required.</p>
       <form className="life-dream-create" onSubmit={addDream}><input value={newDreamTitle} onChange={(event) => setNewDreamTitle(event.target.value)} placeholder="One day, I would love to…" /><button className="primary">Save dream</button></form>
       {sourceDraft?.kind === 'dream' && sourceMomentForm}
-      {activeDreams.length === 0 ? <div className="life-empty-state"><strong>No dreams waiting here.</strong><span>Add one whenever a possibility catches your attention.</span></div> : <div className="life-dream-list">{activeDreams.map((dream) => <div key={dream.id}>
-        <span>◇</span><input value={dream.title} onChange={(event) => updateDream(dream.id, event.target.value)} />
-        <button onClick={() => beginSourceMoment('dream', dream.id, dream.title)}>I lived this</button>
+      {data.somedayDreams.length === 0 ? <div className="life-empty-state"><strong>No dreams waiting here.</strong><span>Add one whenever a possibility catches your attention.</span></div> : <div className="life-dream-list">{data.somedayDreams.map((dream) => {
+        const realisedMoment = dream.realisedMomentId ? data.lifeMoments.find((moment) => moment.id === dream.realisedMomentId) : undefined
+        return <div className={dream.realisedMomentId ? 'complete' : ''} key={dream.id}>
+        <input className="life-dream-checkbox" aria-label={dream.realisedMomentId ? `Return ${dream.title} to Someday` : `Record ${dream.title} as lived`} type="checkbox" checked={Boolean(dream.realisedMomentId)} onChange={() => dream.realisedMomentId ? undoDream(dream) : beginSourceMoment('dream', dream.id, dream.title)} />
+        <input value={dream.title} onChange={(event) => updateDream(dream.id, event.target.value)} />
+        {realisedMoment ? <span className="life-lived-label">Lived {realisedMoment.date}</span> : <span className="life-dream-hint">Check when it becomes a moment</span>}
         <button className="danger-link" onClick={() => removeDream(dream)}>Delete</button>
-      </div>)}</div>}
-      {realisedDreams.length > 0 && <div className="realised-dreams"><p className="eyebrow">Dreams that became moments</p>{realisedDreams.map((dream) => <div key={dream.id}><span>✓</span><strong>{dream.title}</strong><button className="danger-link" onClick={() => removeDream(dream)}>Remove dream</button></div>)}</div>}
+      </div>})}</div>}
     </section>}
   </>
 }

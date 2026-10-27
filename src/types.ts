@@ -128,6 +128,7 @@ export interface CalendarEvent {
   date: string
   time?: string
   color?: CalendarEventColor
+  lifeItemId?: string
 }
 
 export type CalendarEventColor = 'slate' | 'blue' | 'green' | 'yellow' | 'orange' | 'red' | 'purple' | 'pink'
