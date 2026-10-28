@@ -78,6 +78,13 @@ Visible Life Console is developed iteratively from real daily use. This log high
 - Life now opens directly to the Life Archive, while Moment creation remains in its own view.
 - Clarified the difference between ordinary calendar events and Life invitations without turning calendar plans into completion tasks.
 
+### 2026-10-28
+
+#### Changed
+
+- Added consistent confirmation prompts before deleting a Board, a Board column, or an individual Board item to reduce accidental data loss.
+- Added drag-and-drop ordering for Board page tabs, with the saved order shared across the application.
+
 ## 中文
 
 Visible Life Console 会根据真实的日常使用体验持续迭代。本日志只记录有意义的新增功能、调整和修复，不罗列每一项细小的实现改动。
@@ -153,3 +160,10 @@ Visible Life Console 会根据真实的日常使用体验持续迭代。本日�
 
 - 打开 Life 时现在默认显示 Life Archive，Moment 新增功能则保留在单独页面中。
 - 更清楚地区分普通日历事件与 Life 邀请，同时不把日历安排变成需要完成的打卡任务。
+
+### 2026-10-28
+
+#### 调整
+
+- 删除整个 Board、Board 栏目或单个事项前现在都会显示统一的确认提示，降低误删数据的风险。
+- 新增 Board 页面标签拖动排序，并在整个应用中保存和使用调整后的顺序。

@@ -1598,6 +1598,9 @@ function BoardsPage({ data, setData }: { data: AppData; setData: React.Dispatch<
   const [template, setTemplate] = useState<'matrix' | 'custom'>('matrix')
   const [columnTitle, setColumnTitle] = useState('')
   const [newItems, setNewItems] = useState<Record<string, string>>({})
+  const [draggedBoardId, setDraggedBoardId] = useState<string>()
+  const draggedBoardRef = useRef<string>()
+  const [boardDropTarget, setBoardDropTarget] = useState<{ id: string; position: 'before' | 'after' }>()
   const [draggedItemId, setDraggedItemId] = useState<string>()
   const board = data.boards.find((item) => item.id === selectedBoardId) ?? data.boards[0]
 
@@ -1623,7 +1626,7 @@ function BoardsPage({ data, setData }: { data: AppData; setData: React.Dispatch<
   }
 
   function removeBoard(target: LifeBoard) {
-    if (!window.confirm(`Delete “${target.title}” and all of its items?`)) return
+    if (!window.confirm(`Delete “${target.title}” and all of its items? This cannot be undone.`)) return
     setData((current) => ({ ...current, boards: current.boards.filter((item) => item.id !== target.id) }))
     setSelectedBoardId(data.boards.find((item) => item.id !== target.id)?.id ?? '')
   }
@@ -1637,9 +1640,33 @@ function BoardsPage({ data, setData }: { data: AppData; setData: React.Dispatch<
 
   function removeColumn(columnId: string) {
     if (!board) return
+    const column = board.columns.find((item) => item.id === columnId)
     const count = board.items.filter((item) => item.columnId === columnId).length
-    if (count > 0 && !window.confirm(`Delete this column and its ${count} item${count === 1 ? '' : 's'}?`)) return
+    const itemText = count > 0 ? ` and its ${count} item${count === 1 ? '' : 's'}` : ''
+    if (!window.confirm(`Delete column “${column?.title ?? 'Untitled'}”${itemText}? This cannot be undone.`)) return
     updateBoard(board.id, (current) => ({ ...current, columns: current.columns.filter((column) => column.id !== columnId), items: current.items.filter((item) => item.columnId !== columnId) }))
+  }
+
+  function removeItem(item: BoardItem) {
+    if (!board || !window.confirm(`Delete “${item.title}”? This cannot be undone.`)) return
+    updateBoard(board.id, (current) => ({ ...current, items: current.items.filter((entry) => entry.id !== item.id) }))
+  }
+
+  function reorderBoards(targetBoardId: string, position: 'before' | 'after') {
+    const activeBoardId = draggedBoardRef.current ?? draggedBoardId
+    if (!activeBoardId || activeBoardId === targetBoardId) return
+    setData((current) => {
+      const moving = current.boards.find((item) => item.id === activeBoardId)
+      if (!moving) return current
+      const remaining = current.boards.filter((item) => item.id !== activeBoardId)
+      const targetIndex = remaining.findIndex((item) => item.id === targetBoardId)
+      if (targetIndex < 0) return current
+      remaining.splice(targetIndex + (position === 'after' ? 1 : 0), 0, moving)
+      return { ...current, boards: remaining }
+    })
+    draggedBoardRef.current = undefined
+    setDraggedBoardId(undefined)
+    setBoardDropTarget(undefined)
   }
 
   function addItem(event: FormEvent, columnId: string) {
@@ -1676,7 +1703,16 @@ function BoardsPage({ data, setData }: { data: AppData; setData: React.Dispatch<
     <section className="hero-row boards-hero"><div><p className="eyebrow">Boards</p><h1>Keep flexible things visible.</h1><p className="muted">Independent lists for temporary errands, ideas, and things you may choose when there is space.</p></div></section>
     <article className="card board-create-card"><form onSubmit={addBoard}><input value={boardTitle} onChange={(event) => setBoardTitle(event.target.value)} placeholder="New board name" /><select value={template} onChange={(event) => setTemplate(event.target.value as 'matrix' | 'custom')}><option value="matrix">Priority matrix</option><option value="custom">Custom board</option></select><button className="primary">Create board</button></form></article>
     {data.boards.length === 0 ? <article className="card"><div className="motto-list-empty"><strong>No boards yet.</strong><span>Create a priority matrix or a custom collection above.</span></div></article> : <>
-      <div className="board-tabs">{data.boards.map((item) => <button className={item.id === board?.id ? 'active' : ''} key={item.id} onClick={() => setSelectedBoardId(item.id)}>{item.title}<small>{item.items.filter((entry) => !entry.completedAt).length}</small></button>)}</div>
+      <div className="board-tabs">{data.boards.map((item) => <button
+        className={`${item.id === board?.id ? 'active' : ''}${draggedBoardId === item.id ? ' dragging' : ''}${boardDropTarget?.id === item.id ? ` drop-${boardDropTarget.position}` : ''}`}
+        draggable
+        key={item.id}
+        onClick={() => setSelectedBoardId(item.id)}
+        onDragStart={(event) => { event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', item.id); draggedBoardRef.current = item.id; setDraggedBoardId(item.id) }}
+        onDragOver={(event) => { event.preventDefault(); const activeBoardId = draggedBoardRef.current ?? draggedBoardId; if (!activeBoardId || activeBoardId === item.id) return; const bounds = event.currentTarget.getBoundingClientRect(); setBoardDropTarget({ id: item.id, position: event.clientX < bounds.left + bounds.width / 2 ? 'before' : 'after' }) }}
+        onDrop={(event) => { event.preventDefault(); const bounds = event.currentTarget.getBoundingClientRect(); reorderBoards(item.id, event.clientX < bounds.left + bounds.width / 2 ? 'before' : 'after') }}
+        onDragEnd={() => { draggedBoardRef.current = undefined; setDraggedBoardId(undefined); setBoardDropTarget(undefined) }}
+      ><span className="board-tab-drag" aria-hidden="true">⠿</span><span>{item.title}</span><small>{item.items.filter((entry) => !entry.completedAt).length}</small></button>)}</div>
       {board && <section className="board-workspace">
         <div className="board-toolbar"><input value={board.title} onChange={(event) => updateBoard(board.id, (current) => ({ ...current, title: event.target.value }))} /><form onSubmit={addColumn}><input value={columnTitle} onChange={(event) => setColumnTitle(event.target.value)} placeholder="New column" /><button>Add column</button></form><button className="danger-text" onClick={() => removeBoard(board)}>Delete board</button></div>
         <div className="board-columns">{board.columns.map((column) => {
@@ -1686,7 +1722,7 @@ function BoardsPage({ data, setData }: { data: AppData; setData: React.Dispatch<
             <div className="board-items">{items.map((item) => <div className={`board-item ${item.completedAt ? 'complete' : ''}`} draggable key={item.id} onDragStart={() => setDraggedItemId(item.id)} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.stopPropagation(); moveItem(column.id, item.id) }}>
               <input type="checkbox" checked={Boolean(item.completedAt)} onChange={() => updateBoard(board.id, (current) => ({ ...current, items: current.items.map((entry) => entry.id === item.id ? { ...entry, completedAt: entry.completedAt ? undefined : localDate() } : entry) }))} />
               <textarea rows={2} value={item.title} onChange={(event) => updateBoard(board.id, (current) => ({ ...current, items: current.items.map((entry) => entry.id === item.id ? { ...entry, title: event.target.value } : entry) }))} />
-              <button onClick={() => updateBoard(board.id, (current) => ({ ...current, items: current.items.filter((entry) => entry.id !== item.id) }))}>×</button>
+              <button onClick={() => removeItem(item)}>×</button>
             </div>)}</div>
             <form className="board-item-create" onSubmit={(event) => addItem(event, column.id)}><input value={newItems[column.id] ?? ''} onChange={(event) => setNewItems((current) => ({ ...current, [column.id]: event.target.value }))} placeholder="Add an item" /><button>＋</button></form>
           </article>
