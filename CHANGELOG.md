@@ -97,6 +97,11 @@ Visible Life Console is developed iteratively from real daily use. This log high
 - Mixed Group modes now roll up automatically into the Project and Dashboard percentage using each Group's estimated-time weight; Supporting Work remains excluded from progress.
 - Project percentages in Manage's Categories & projects list and Dashboard's All Project Progress now display one decimal place, while percentage formatting elsewhere remains unchanged.
 
+#### Fixed
+
+- Widened the Life Archive date field so the calendar control no longer obscures the final part of the date.
+- Life Archive reflections now grow automatically to reveal the complete text without manual textarea resizing.
+
 ## 中文
 
 Visible Life Console 会根据真实的日常使用体验持续迭代。本日志只记录有意义的新增功能、调整和修复，不罗列每一项细小的实现改动。
@@ -191,3 +196,8 @@ Visible Life Console 会根据真实的日常使用体验持续迭代。本日�
 
 - 混合 Group 模式现在会根据各 Group 的预计时间权重自动汇总到 Project 与 Dashboard 百分比；Supporting Work 仍然不进入进度。
 - Manage 的 Categories & projects 列表和 Dashboard 的 All Project Progress 现以一位小数显示项目百分比，其他位置的百分比格式保持不变。
+
+#### 修复
+
+- 加宽 Life Archive 的日期输入区域，避免日历图标遮挡日期的最后一部分。
+- Life Archive 的回忆描述框现在会随文字自动增高，无需手动拖动即可看到完整内容。

@@ -32,6 +32,12 @@ function localMonth(date = new Date()) {
   return localDate(date).slice(0, 7)
 }
 
+function fitTextareaHeight(element: HTMLTextAreaElement | null) {
+  if (!element) return
+  element.style.height = 'auto'
+  element.style.height = `${element.scrollHeight}px`
+}
+
 function startOfWeek(offset = 0) {
   const date = new Date()
   const day = date.getDay() || 7
@@ -1091,7 +1097,7 @@ function LifePage({ data, setData, setNotice }: {
             <input className="life-moment-title" value={moment.title} onChange={(event) => updateMoment(moment.id, { title: event.target.value })} />
             <input type="date" value={moment.date} onChange={(event) => updateMoment(moment.id, { date: event.target.value })} />
             <input value={moment.place ?? ''} onChange={(event) => updateMoment(moment.id, { place: event.target.value || undefined })} placeholder="Place (optional)" />
-            <textarea rows={2} value={moment.reflection ?? ''} onChange={(event) => updateMoment(moment.id, { reflection: event.target.value || undefined })} placeholder="No reflection needed." />
+            <textarea ref={fitTextareaHeight} rows={2} value={moment.reflection ?? ''} onChange={(event) => { fitTextareaHeight(event.currentTarget); updateMoment(moment.id, { reflection: event.target.value || undefined }) }} placeholder="No reflection needed." />
             <button onClick={() => removeMoment(moment)}>Delete</button>
           </article>)}
         </section>)}</div>

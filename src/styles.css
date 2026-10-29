@@ -467,9 +467,9 @@ label input, label select, label textarea { display: block; margin-top: 6px; }
 .life-year-summary { margin: -5px 0 20px; color: #8f5870; font-size: 11px; font-weight: 650; }
 .life-archive { display: grid; gap: 22px; }
 .life-archive > section > h3 { margin: 0 0 10px; color: var(--muted); font: 750 11px 'Segoe UI', sans-serif; text-transform: uppercase; letter-spacing: .08em; }
-.life-moment-card { display: grid; grid-template-columns: minmax(0, 1.2fr) 125px minmax(120px, .8fr) auto; gap: 7px; align-items: start; padding: 12px; border-left: 3px solid #b97994; border-radius: 10px; background: #f8f1f4; }
+.life-moment-card { display: grid; grid-template-columns: minmax(0, 1.2fr) 160px minmax(120px, .8fr) auto; gap: 7px; align-items: start; padding: 12px; border-left: 3px solid #b97994; border-radius: 10px; background: #f8f1f4; }
 .life-moment-card + .life-moment-card { margin-top: 8px; }
-.life-moment-card textarea { grid-column: 1 / -2; }
+.life-moment-card textarea { grid-column: 1 / -2; overflow-y: hidden; resize: none; }
 .life-moment-card > button { grid-column: -2 / -1; grid-row: 2; align-self: end; padding: 8px; border: 0; background: none; color: #a14c3b; cursor: pointer; font-size: 9px; font-weight: 750; }
 .life-moment-title { font-weight: 750; }
 .life-month-manager, .life-dream-manager { max-width: 1100px; }
@@ -776,7 +776,7 @@ label input, label select, label textarea { display: block; margin-top: 6px; }
   .project-metric-grid { grid-template-columns: 1fr 1fr; }
   .project-section-heading { align-items: start; flex-direction: column; gap: 6px; }
   .project-section-heading > span { max-width: none; text-align: left; }
-  .life-moment-card { grid-template-columns: minmax(0, 1fr) 125px; }
+  .life-moment-card { grid-template-columns: minmax(0, 1fr) 160px; }
   .life-moment-card textarea { grid-column: 1 / -1; }
   .life-moment-card > button { grid-column: 2; grid-row: auto; justify-self: end; }
   .life-manager-list > div { grid-template-columns: 24px minmax(0, 1fr) auto; }
