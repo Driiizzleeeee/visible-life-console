@@ -98,11 +98,17 @@ function taskMetrics(tasks: StockTask[], rootId?: string) {
   const scope = rootId ? descendantIds(tasks, rootId) : new Set(tasks.map((task) => task.id))
   const scopedTasks = tasks.filter((task) => scope.has(task.id))
   const leaves = scopedTasks.filter((task) => !tasks.some((child) => child.parentId === task.id))
+  const nonLeaves = scopedTasks.filter((task) => tasks.some((child) => child.parentId === task.id))
   const estimated = leaves.reduce((sum, task) => sum + Math.max(1, task.estimateMinutes || 60), 0)
   const spent = scopedTasks.reduce((sum, task) => sum + task.worklogs.reduce((total, log) => total + log.minutes, 0), 0)
   const remaining = leaves.reduce((sum, task) => sum + calculatedRemaining(task), 0)
   const completedWeight = leaves.reduce((sum, task) => sum + (task.completed ? Math.max(1, task.estimateMinutes || 60) : 0), 0)
-  return { estimated, spent, remaining, completedWeight, percent: estimated ? Math.round(completedWeight / estimated * 100) : 0, leafCount: leaves.length }
+  const parentSpent = nonLeaves.reduce((sum, task) => sum + loggedMinutes(task), 0)
+  const investedWeight = Math.min(estimated, parentSpent + leaves.reduce((sum, task) => {
+    const estimate = Math.max(1, task.estimateMinutes || 60)
+    return sum + (task.completed ? estimate : Math.min(estimate, loggedMinutes(task)))
+  }, 0))
+  return { estimated, spent, remaining, completedWeight, investedWeight, percent: estimated ? Math.round(completedWeight / estimated * 100) : 0, leafCount: leaves.length }
 }
 
 function syncParentTasks(tasks: StockTask[]) {
@@ -129,7 +135,11 @@ function syncParentTasks(tasks: StockTask[]) {
 function trackerPercent(project: Project, trackerId: string) {
   const tracker = project.trackers.find((item) => item.id === trackerId)
   if (!tracker) return 0
-  if (tracker.tasks.length > 0) return taskMetrics(tracker.tasks).percent
+  if (tracker.tasks.length > 0) {
+    const metrics = taskMetrics(tracker.tasks)
+    const earnedWeight = tracker.progressMode === 'time' ? metrics.investedWeight : metrics.completedWeight
+    return metrics.estimated ? Math.round(earnedWeight / metrics.estimated * 100) : 0
+  }
   return tracker.target ? Math.round(Math.min(100, Math.max(0, tracker.current / tracker.target * 100))) : 0
 }
 
@@ -143,23 +153,30 @@ function projectPercent(project: Project) {
   return projectMetrics(project).percent
 }
 
+function projectPercentOneDecimal(project: Project) {
+  const metrics = projectMetrics(project)
+  return (metrics.estimated ? metrics.earnedWeight / metrics.estimated * 100 : 0).toFixed(1)
+}
+
 function projectMetrics(project: Project) {
   const direct = project.trackers.reduce((result, tracker) => {
     const metrics = taskMetrics(tracker.tasks)
+    const earnedWeight = tracker.progressMode === 'time' ? metrics.investedWeight : metrics.completedWeight
     return {
       estimated: result.estimated + metrics.estimated,
       spent: result.spent + metrics.spent,
       remaining: result.remaining + metrics.remaining,
       completedWeight: result.completedWeight + metrics.completedWeight,
+      earnedWeight: result.earnedWeight + earnedWeight,
       leafCount: result.leafCount + metrics.leafCount,
     }
-  }, { estimated: 0, spent: 0, remaining: 0, completedWeight: 0, leafCount: 0 })
+  }, { estimated: 0, spent: 0, remaining: 0, completedWeight: 0, earnedWeight: 0, leafCount: 0 })
   const supportSpent = project.supportWork.reduce((sum, item) => sum + item.worklogs.reduce((itemTotal, log) => itemTotal + log.minutes, 0), 0)
   return {
     ...direct,
     supportSpent,
     totalSpent: direct.spent + supportSpent,
-    percent: direct.estimated ? Math.round(direct.completedWeight / direct.estimated * 100) : 0,
+    percent: direct.estimated ? Math.round(direct.earnedWeight / direct.estimated * 100) : 0,
   }
 }
 
@@ -409,7 +426,7 @@ function Dashboard({
               {projects.length === 0 ? <p className="category-empty">No projects in this category yet.</p> : <div className="category-projects">{projects.map((project) => {
                 const percent = projectPercent(project)
                 return <div className="project-progress" key={project.id}>
-                  <div className="project-progress-line"><span>{project.title}</span><strong>{percent}%</strong></div>
+                  <div className="project-progress-line"><span>{project.title}</span><strong>{projectPercentOneDecimal(project)}%</strong></div>
                   <div className="progress" role="progressbar" aria-label={`${project.title} progress`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}><span style={{ width: `${percent}%`, background: project.color }} /></div>
                   <small>{projectMetrics(project).leafCount} deliverable tasks · {formatMinutes(projectMetrics(project).totalSpent)} invested</small>
                 </div>
@@ -1981,7 +1998,7 @@ function Manage({ data, setData, setNotice }: { data: AppData; setData: React.Di
               >
                 <span className="drag-handle project-drag-handle" draggable role="button" tabIndex={0} aria-label={`Drag to reorder ${project.title}`} title="Drag to reorder" onDragStart={(event) => { event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', project.id); draggedProjectRef.current = project.id; setDraggedProjectId(project.id) }} onDragEnd={clearProjectDrag}><span className="drag-grip" aria-hidden="true">{Array.from({ length: 6 }, (_, index) => <i key={index} />)}</span></span>
                 <button className="project-row-main" onClick={() => setSelectedProjectId(project.id)}><span><strong>{project.title}</strong><small>{projectMetrics(project).leafCount} deliverable tasks · {formatMinutes(projectMetrics(project).totalSpent)} invested</small></span></button>
-                <b>{projectPercent(project)}%</b>
+                <b>{projectPercentOneDecimal(project)}%</b>
                 <select aria-label={`Move ${project.title} to category`} value={project.categoryId} onChange={(event) => moveProject(project.id, event.target.value)}>{data.categories.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select>
                 <button className="project-row-open" aria-label={`Open ${project.title}`} onClick={() => setSelectedProjectId(project.id)}>›</button>
               </div>)}
@@ -2362,7 +2379,7 @@ function ProjectEditor({ project, categories, addTracker, addTask, toggleTask, s
     </div>
 
     <div className="project-metric-grid">
-      <div className="primary-metric"><span>Delivery progress</span><strong>{metrics.percent}%</strong><small>Completed estimated weight</small></div>
+      <div className="primary-metric"><span>Delivery progress</span><strong>{metrics.percent}%</strong><small>Weighted from each Group's mode</small></div>
       <div><span>Total invested</span><strong>{formatMinutes(metrics.totalSpent)}</strong><small>Direct + supporting work</small></div>
       <div><span>Delivery remaining</span><strong>{formatMinutes(metrics.remaining)}</strong><small>Estimate minus logged actual time</small></div>
       <div><span>Supporting work</span><strong>{formatMinutes(metrics.supportSpent)}</strong><small>Does not change progress</small></div>
@@ -2370,16 +2387,21 @@ function ProjectEditor({ project, categories, addTracker, addTask, toggleTask, s
     <div className="project-progress-overview"><div><span style={{ width: `${metrics.percent}%`, background: project.color }} /></div><p><strong>{formatMinutes(metrics.estimated)}</strong> delivery estimate · <strong>{metrics.leafCount}</strong> leaf task{metrics.leafCount === 1 ? '' : 's'}</p></div>
 
     <section className="project-editor-section">
-      <div className="project-section-heading"><div><p className="eyebrow">Direct deliverables</p><h3>Work that changes project progress</h3></div><span>Actual time never changes the percentage.</span></div>
+      <div className="project-section-heading"><div><p className="eyebrow">Direct deliverables</p><h3>Work that changes project progress</h3></div><span>Each Group chooses completion or invested-time progress.</span></div>
       {project.trackers.map((tracker) => {
         const trackerMetrics = taskMetrics(tracker.tasks)
         return <article className="tracker-editor deliverable-group" key={tracker.id}>
           <div className="tracker-editor-head">
+            <button className="group-collapse-button" aria-label={`${tracker.collapsed ? 'Expand' : 'Collapse'} ${tracker.title}`} aria-expanded={!tracker.collapsed} onClick={() => updateProject({ trackers: project.trackers.map((entry) => entry.id === tracker.id ? { ...entry, collapsed: !entry.collapsed } : entry) })}>{tracker.collapsed ? '▸' : '▾'}</button>
             <input aria-label="Deliverable group name" value={tracker.title} onChange={(event) => setData((current) => ({ ...current, projects: current.projects.map((item) => item.id !== project.id ? item : { ...item, trackers: item.trackers.map((entry) => entry.id === tracker.id ? { ...entry, title: event.target.value } : entry) }) }))} />
+            <select className="group-progress-mode" aria-label={`${tracker.title} progress calculation`} value={tracker.progressMode ?? 'completion'} onChange={(event) => updateProject({ trackers: project.trackers.map((entry) => entry.id === tracker.id ? { ...entry, progressMode: event.target.value as 'completion' | 'time' } : entry) })}>
+              <option value="completion">Completion based</option>
+              <option value="time">Time invested</option>
+            </select>
             <span>{trackerPercent(project, tracker.id)}%</span>
             <button aria-label={`Delete ${tracker.title}`} disabled={project.trackers.length === 1} onClick={() => { if (window.confirm(`Delete “${tracker.title}” and all its tasks?`)) updateProject({ trackers: project.trackers.filter((entry) => entry.id !== tracker.id) }) }}>×</button>
           </div>
-          <div className="task-time-summary">
+          {!tracker.collapsed && <><div className="task-time-summary">
             <span><small>Estimated</small><strong>{formatMinutes(trackerMetrics.estimated)}</strong></span>
             <span><small>Remaining</small><strong>{formatMinutes(trackerMetrics.remaining)}</strong></span>
             <span><small>Actual</small><strong>{formatMinutes(trackerMetrics.spent)}</strong></span>
@@ -2414,7 +2436,7 @@ function ProjectEditor({ project, categories, addTracker, addTask, toggleTask, s
             addTask(project.id, tracker.id, taskInputs[tracker.id] ?? '', Number(taskEstimates[tracker.id] ?? 60))
             setTaskInputs((current) => ({ ...current, [tracker.id]: '' }))
             setTaskEstimates((current) => ({ ...current, [tracker.id]: '60' }))
-          }}><input value={taskInputs[tracker.id] ?? ''} onChange={(event) => setTaskInputs((current) => ({ ...current, [tracker.id]: event.target.value }))} placeholder="New direct task" /><label><span>Estimate (min)</span><input aria-label={`${tracker.title} new task estimate minutes`} type="number" min="1" value={taskEstimates[tracker.id] ?? '60'} onChange={(event) => setTaskEstimates((current) => ({ ...current, [tracker.id]: event.target.value }))} /></label><button>Add task</button></form>
+          }}><input value={taskInputs[tracker.id] ?? ''} onChange={(event) => setTaskInputs((current) => ({ ...current, [tracker.id]: event.target.value }))} placeholder="New direct task" /><label><span>Estimate (min)</span><input aria-label={`${tracker.title} new task estimate minutes`} type="number" min="1" value={taskEstimates[tracker.id] ?? '60'} onChange={(event) => setTaskEstimates((current) => ({ ...current, [tracker.id]: event.target.value }))} /></label><button>Add task</button></form></>}
         </article>
       })}
       <form className="deliverable-group-form" onSubmit={(event) => { event.preventDefault(); addTracker(project.id, groupTitle, 1); setGroupTitle('') }}><input value={groupTitle} onChange={(event) => setGroupTitle(event.target.value)} placeholder="Optional new deliverable group" /><button>Add group</button></form>
