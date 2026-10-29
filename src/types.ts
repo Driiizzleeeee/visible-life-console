@@ -64,6 +64,8 @@ export interface Tracker {
   current: number
   target: number
   tasks: StockTask[]
+  collapsed?: boolean
+  progressMode?: 'completion' | 'time'
   nextAction?: string
   nextActionMinutes?: number
   isUncertain?: boolean

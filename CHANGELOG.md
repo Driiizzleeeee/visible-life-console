@@ -85,6 +85,18 @@ Visible Life Console is developed iteratively from real daily use. This log high
 - Added consistent confirmation prompts before deleting a Board, a Board column, or an individual Board item to reduce accidental data loss.
 - Added drag-and-drop ordering for Board page tabs, with the saved order shared across the application.
 
+### 2026-10-29
+
+#### Added
+
+- Added persistent expand and collapse controls for Manage deliverable groups, so task-heavy groups can stay compact between sessions.
+- Added a per-Group progress mode: Completion Based preserves outcome-based weighting, while Time Invested lets recorded direct-task time contribute partial progress.
+
+#### Changed
+
+- Mixed Group modes now roll up automatically into the Project and Dashboard percentage using each Group's estimated-time weight; Supporting Work remains excluded from progress.
+- Project percentages in Manage's Categories & projects list and Dashboard's All Project Progress now display one decimal place, while percentage formatting elsewhere remains unchanged.
+
 ## 中文
 
 Visible Life Console 会根据真实的日常使用体验持续迭代。本日志只记录有意义的新增功能、调整和修复，不罗列每一项细小的实现改动。
@@ -167,3 +179,15 @@ Visible Life Console 会根据真实的日常使用体验持续迭代。本日�
 
 - 删除整个 Board、Board 栏目或单个事项前现在都会显示统一的确认提示，降低误删数据的风险。
 - 新增 Board 页面标签拖动排序，并在整个应用中保存和使用调整后的顺序。
+
+### 2026-10-29
+
+#### 新增
+
+- 为 Manage 中的交付 Group 新增可持久保存的展开与收起控制，让包含大量任务的 Group 在下次打开时保持上一次状态。
+- 为每个 Group 新增进度模式：Completion Based 保留按成果完成计算，Time Invested 则让直接任务的已记录时间贡献部分进度。
+
+#### 调整
+
+- 混合 Group 模式现在会根据各 Group 的预计时间权重自动汇总到 Project 与 Dashboard 百分比；Supporting Work 仍然不进入进度。
+- Manage 的 Categories & projects 列表和 Dashboard 的 All Project Progress 现以一位小数显示项目百分比，其他位置的百分比格式保持不变。
