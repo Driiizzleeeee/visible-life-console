@@ -102,6 +102,17 @@ Visible Life Console is developed iteratively from real daily use. This log high
 - Widened the Life Archive date field so the calendar control no longer obscures the final part of the date.
 - Life Archive reflections now grow automatically to reveal the complete text without manual textarea resizing.
 
+### 2026-11-11
+
+#### Added
+
+- Added a per-Group task-order selector for manual order, reversed manual order, and created-time order in either direction.
+- New deliverable tasks now keep their creation time, while existing tasks use their current sibling order as the oldest-to-newest fallback.
+
+#### Changed
+
+- Ordering is applied independently within each sibling level, preserving every parent-child relationship. Dragging remains available in both manual modes and is disabled for automatic created-time sorting.
+
 ## 中文
 
 Visible Life Console 会根据真实的日常使用体验持续迭代。本日志只记录有意义的新增功能、调整和修复，不罗列每一项细小的实现改动。
@@ -201,3 +212,14 @@ Visible Life Console 会根据真实的日常使用体验持续迭代。本日�
 
 - 加宽 Life Archive 的日期输入区域，避免日历图标遮挡日期的最后一部分。
 - Life Archive 的回忆描述框现在会随文字自动增高，无需手动拖动即可看到完整内容。
+
+### 2026-11-11
+
+#### 新增
+
+- 为每个 Group 新增任务排序下拉框，可选择手动正序、手动倒序，以及按创建时间正序或倒序排列。
+- 新增的交付任务现在会保存创建时间；没有创建时间的旧任务则以当前同级顺序作为从旧到新的依据。
+
+#### 调整
+
+- 排序只在各自的同级范围内独立进行，所有父子关系保持不变。两种手动模式仍可拖动，按创建时间自动排序时则暂时禁用拖动。
