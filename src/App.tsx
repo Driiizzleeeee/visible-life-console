@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
-import { CATEGORIES, SUPPORT_WORK_TYPES, type Activity, type ActualDifficulty, type AppData, type BoardItem, type CalendarEvent, type CalendarEventColor, type Category, type Difficulty, type LifeBoard, type LifeMoment, type Motto, type MonthlyLifeItem, type Project, type ProjectCategory, type RoutineTask, type SomedayDream, type StockTask, type SupportWorkItem, type SupportWorkType, type TaskWorklog } from './types'
+import { CATEGORIES, SUPPORT_WORK_TYPES, type Activity, type ActualDifficulty, type AppData, type BoardItem, type CalendarEvent, type CalendarEventColor, type Category, type Difficulty, type LifeBoard, type LifeMoment, type Motto, type MonthlyLifeItem, type Project, type ProjectCategory, type RoutineTask, type SomedayDream, type StockTask, type SupportWorkItem, type SupportWorkType, type TaskOrderMode, type TaskWorklog } from './types'
 import { downloadCsv, downloadJson, loadData, parseBackup, saveData } from './storage'
 
 const COLORS = ['#e85d3f', '#397c68', '#5573c7', '#d39a27', '#9366a5', '#287d9b']
@@ -79,6 +79,34 @@ function mottoLengthClass(text: string) {
 
 function taskChildren(tasks: StockTask[], parentId?: string) {
   return tasks.filter((task) => task.parentId === parentId)
+}
+
+function orderedTaskChildren(tasks: StockTask[], parentId: string | undefined, mode: TaskOrderMode) {
+  const children = taskChildren(tasks, parentId)
+  if (mode === 'manual') return children
+  if (mode === 'manual-reverse') return [...children].reverse()
+
+  return children
+    .map((task, index) => ({ task, index }))
+    .sort((left, right) => {
+      const leftTime = left.task.createdAt ? Date.parse(left.task.createdAt) : undefined
+      const rightTime = right.task.createdAt ? Date.parse(right.task.createdAt) : undefined
+      const leftHasTime = Number.isFinite(leftTime)
+      const rightHasTime = Number.isFinite(rightTime)
+
+      if (leftHasTime && rightHasTime && leftTime !== rightTime) {
+        return mode === 'created-asc' ? leftTime! - rightTime! : rightTime! - leftTime!
+      }
+      if (leftHasTime !== rightHasTime) {
+        return mode === 'created-asc' ? (leftHasTime ? 1 : -1) : (leftHasTime ? -1 : 1)
+      }
+      return mode === 'created-asc' ? left.index - right.index : right.index - left.index
+    })
+    .map(({ task }) => task)
+}
+
+function isManualTaskOrder(mode: TaskOrderMode) {
+  return mode === 'manual' || mode === 'manual-reverse'
 }
 
 function descendantIds(tasks: StockTask[], taskId: string): Set<string> {
@@ -1906,7 +1934,14 @@ function Manage({ data, setData, setNotice }: { data: AppData; setData: React.Di
     const safeEstimate = Math.max(1, Math.round(estimateMinutes) || 60)
     setData((current) => ({ ...current, projects: current.projects.map((project) => project.id !== projectId ? project : { ...project, trackers: project.trackers.map((tracker) => {
       if (tracker.id !== trackerId) return tracker
-      const task: StockTask = { id: id(), title: title.trim(), description: '', completed: false, parentId, estimateMinutes: safeEstimate, remainingEstimateMinutes: safeEstimate, worklogs: [] }
+      const task: StockTask = { id: id(), title: title.trim(), createdAt: new Date().toISOString(), description: '', completed: false, parentId, estimateMinutes: safeEstimate, remainingEstimateMinutes: safeEstimate, worklogs: [] }
+      if (tracker.taskOrderMode === 'manual-reverse') {
+        const firstSiblingIndex = tracker.tasks.findIndex((item) => item.parentId === parentId)
+        const tasks = firstSiblingIndex < 0
+          ? [...tracker.tasks, task]
+          : [...tracker.tasks.slice(0, firstSiblingIndex), task, ...tracker.tasks.slice(firstSiblingIndex)]
+        return { ...tracker, tasks: syncParentTasks(tasks) }
+      }
       return { ...tracker, tasks: syncParentTasks([...tracker.tasks, task]) }
     }) }) }))
   }
@@ -2277,6 +2312,11 @@ function ProjectEditor({ project, categories, addTracker, addTask, toggleTask, s
   }
 
   function startTaskDrag(event: React.DragEvent<HTMLElement>, trackerId: string, task: StockTask) {
+    const mode = project.trackers.find((tracker) => tracker.id === trackerId)?.taskOrderMode ?? 'manual'
+    if (!isManualTaskOrder(mode)) {
+      event.preventDefault()
+      return
+    }
     event.dataTransfer.effectAllowed = 'move'
     event.dataTransfer.setData('text/plain', task.id)
     const active = { trackerId, taskId: task.id, parentId: task.parentId }
@@ -2292,6 +2332,8 @@ function ProjectEditor({ project, categories, addTracker, addTask, toggleTask, s
 
   function dragOverTask(event: React.DragEvent<HTMLDivElement>, trackerId: string, task: StockTask) {
     const active = draggedTaskRef.current ?? draggedTask
+    const mode = project.trackers.find((tracker) => tracker.id === trackerId)?.taskOrderMode ?? 'manual'
+    if (!isManualTaskOrder(mode)) return
     if (!active || active.trackerId !== trackerId || active.taskId === task.id || (active.parentId ?? '') !== (task.parentId ?? '')) return
     event.preventDefault()
     event.stopPropagation()
@@ -2301,9 +2343,10 @@ function ProjectEditor({ project, categories, addTracker, addTask, toggleTask, s
 
   function dropTask(event: React.DragEvent<HTMLDivElement>, trackerId: string, targetTask: StockTask) {
     const active = draggedTaskRef.current ?? draggedTask
+    const mode = project.trackers.find((tracker) => tracker.id === trackerId)?.taskOrderMode ?? 'manual'
     event.preventDefault()
     event.stopPropagation()
-    if (!active || active.trackerId !== trackerId || active.taskId === targetTask.id || (active.parentId ?? '') !== (targetTask.parentId ?? '')) {
+    if (!isManualTaskOrder(mode) || !active || active.trackerId !== trackerId || active.taskId === targetTask.id || (active.parentId ?? '') !== (targetTask.parentId ?? '')) {
       clearTaskDrag()
       return
     }
@@ -2312,12 +2355,13 @@ function ProjectEditor({ project, categories, addTracker, addTask, toggleTask, s
     updateTracker(trackerId, (tasks) => {
       const moving = tasks.find((task) => task.id === active.taskId)
       if (!moving) return tasks
-      const siblings = tasks.filter((task) => (task.parentId ?? '') === (moving.parentId ?? '') && task.id !== moving.id)
+      const siblings = orderedTaskChildren(tasks, moving.parentId, mode).filter((task) => task.id !== moving.id)
       const targetIndex = siblings.findIndex((task) => task.id === targetTask.id)
       if (targetIndex < 0) return tasks
       siblings.splice(targetIndex + (position === 'after' ? 1 : 0), 0, moving)
+      const manualSiblings = mode === 'manual-reverse' ? [...siblings].reverse() : siblings
       let siblingIndex = 0
-      return tasks.map((task) => (task.parentId ?? '') === (moving.parentId ?? '') ? siblings[siblingIndex++] : task)
+      return tasks.map((task) => (task.parentId ?? '') === (moving.parentId ?? '') ? manualSiblings[siblingIndex++] : task)
     })
     clearTaskDrag()
   }
@@ -2396,6 +2440,7 @@ function ProjectEditor({ project, categories, addTracker, addTask, toggleTask, s
       <div className="project-section-heading"><div><p className="eyebrow">Direct deliverables</p><h3>Work that changes project progress</h3></div><span>Each Group chooses completion or invested-time progress.</span></div>
       {project.trackers.map((tracker) => {
         const trackerMetrics = taskMetrics(tracker.tasks)
+        const taskOrderMode = tracker.taskOrderMode ?? 'manual'
         return <article className="tracker-editor deliverable-group" key={tracker.id}>
           <div className="tracker-editor-head">
             <button className="group-collapse-button" aria-label={`${tracker.collapsed ? 'Expand' : 'Collapse'} ${tracker.title}`} aria-expanded={!tracker.collapsed} onClick={() => updateProject({ trackers: project.trackers.map((entry) => entry.id === tracker.id ? { ...entry, collapsed: !entry.collapsed } : entry) })}>{tracker.collapsed ? '▸' : '▾'}</button>
@@ -2407,14 +2452,22 @@ function ProjectEditor({ project, categories, addTracker, addTask, toggleTask, s
             <span>{trackerPercent(project, tracker.id)}%</span>
             <button aria-label={`Delete ${tracker.title}`} disabled={project.trackers.length === 1} onClick={() => { if (window.confirm(`Delete “${tracker.title}” and all its tasks?`)) updateProject({ trackers: project.trackers.filter((entry) => entry.id !== tracker.id) }) }}>×</button>
           </div>
-          {!tracker.collapsed && <><div className="task-time-summary">
+          {!tracker.collapsed && <><div className="group-task-order-row">
+            <label>Task order<select value={taskOrderMode} onChange={(event) => updateProject({ trackers: project.trackers.map((entry) => entry.id === tracker.id ? { ...entry, taskOrderMode: event.target.value as TaskOrderMode } : entry) })}>
+              <option value="manual">Manual order</option>
+              <option value="manual-reverse">Reverse manual order</option>
+              <option value="created-asc">Created: oldest first</option>
+              <option value="created-desc">Created: newest first</option>
+            </select></label>
+            {!isManualTaskOrder(taskOrderMode) && <small>Switch to a manual order to drag tasks.</small>}
+          </div><div className="task-time-summary">
             <span><small>Estimated</small><strong>{formatMinutes(trackerMetrics.estimated)}</strong></span>
             <span><small>Remaining</small><strong>{formatMinutes(trackerMetrics.remaining)}</strong></span>
             <span><small>Actual</small><strong>{formatMinutes(trackerMetrics.spent)}</strong></span>
             <span><small>Project weight</small><strong>{metrics.estimated ? Math.round(trackerMetrics.estimated / metrics.estimated * 100) : 0}%</strong></span>
           </div>
 
-          {tracker.tasks.length === 0 ? <p className="project-section-empty">Add the first deliverable task. Its estimate becomes its weight in this project.</p> : <div className="task-tree">{taskChildren(tracker.tasks).map((task) => <TaskNode
+          {tracker.tasks.length === 0 ? <p className="project-section-empty">Add the first deliverable task. Its estimate becomes its weight in this project.</p> : <div className="task-tree">{orderedTaskChildren(tracker.tasks, undefined, taskOrderMode).map((task) => <TaskNode
             key={task.id}
             task={task}
             tasks={tracker.tasks}
@@ -2431,6 +2484,7 @@ function ProjectEditor({ project, categories, addTracker, addTask, toggleTask, s
             deleteWorklog={deleteTaskWorklog}
             draggedTask={draggedTask}
             taskDropTarget={taskDropTarget}
+            taskOrderMode={taskOrderMode}
             startTaskDrag={startTaskDrag}
             clearTaskDrag={clearTaskDrag}
             dragOverTask={dragOverTask}
@@ -2497,7 +2551,7 @@ function DeferredNumberInput({ value, min = 0, ariaLabel, onCommit }: {
   />
 }
 
-function TaskNode({ task, tasks, depth, trackerId, projectId, projectEstimate, addTask, toggleTask, updateTask, deleteTask, addWorklog, updateWorklog, deleteWorklog, draggedTask, taskDropTarget, startTaskDrag, clearTaskDrag, dragOverTask, dropTask }: {
+function TaskNode({ task, tasks, depth, trackerId, projectId, projectEstimate, addTask, toggleTask, updateTask, deleteTask, addWorklog, updateWorklog, deleteWorklog, draggedTask, taskDropTarget, taskOrderMode, startTaskDrag, clearTaskDrag, dragOverTask, dropTask }: {
   task: StockTask
   tasks: StockTask[]
   depth: number
@@ -2513,12 +2567,13 @@ function TaskNode({ task, tasks, depth, trackerId, projectId, projectEstimate, a
   deleteWorklog: (trackerId: string, taskId: string, worklogId: string) => void
   draggedTask?: { trackerId: string; taskId: string; parentId?: string }
   taskDropTarget?: { trackerId: string; taskId: string; position: 'before' | 'after' }
+  taskOrderMode: TaskOrderMode
   startTaskDrag: (event: React.DragEvent<HTMLElement>, trackerId: string, task: StockTask) => void
   clearTaskDrag: () => void
   dragOverTask: (event: React.DragEvent<HTMLDivElement>, trackerId: string, task: StockTask) => void
   dropTask: (event: React.DragEvent<HTMLDivElement>, trackerId: string, task: StockTask) => void
 }) {
-  const children = taskChildren(tasks, task.id)
+  const children = orderedTaskChildren(tasks, task.id, taskOrderMode)
   const hasChildren = children.length > 0
   const metrics = taskMetrics(tasks, task.id)
   const weight = projectEstimate ? Math.round(metrics.estimated / projectEstimate * 100) : 0
@@ -2531,6 +2586,7 @@ function TaskNode({ task, tasks, depth, trackerId, projectId, projectEstimate, a
   const actualMinutes = loggedMinutes(task)
   const availableMinutes = Math.max(0, task.estimateMinutes - actualMinutes)
   const effortPercent = task.estimateMinutes ? Math.min(100, Math.round(actualMinutes / task.estimateMinutes * 100)) : 0
+  const canDrag = isManualTaskOrder(taskOrderMode)
 
   function updateEstimate(estimateMinutes: number) {
     if (estimateMinutes < actualMinutes) {
@@ -2563,7 +2619,7 @@ function TaskNode({ task, tasks, depth, trackerId, projectId, projectEstimate, a
 
   return <div className={`task-node ${task.completed ? 'complete' : ''}${draggingClass}${dropClass}`} style={{ marginLeft: depth > 0 ? '14px' : 0 }} onDragOver={(event) => dragOverTask(event, trackerId, task)} onDrop={(event) => dropTask(event, trackerId, task)}>
     <div className="task-node-main redesigned-task-main">
-      <span className="drag-handle task-drag-handle" draggable role="button" tabIndex={0} aria-label={`Drag to reorder ${task.title}`} title="Drag within this level" onDragStart={(event) => startTaskDrag(event, trackerId, task)} onDragEnd={clearTaskDrag}><span className="drag-grip" aria-hidden="true">{Array.from({ length: 6 }, (_, index) => <i key={index} />)}</span></span>
+      <span className={`drag-handle task-drag-handle${canDrag ? '' : ' drag-disabled'}`} draggable={canDrag} role="button" tabIndex={canDrag ? 0 : -1} aria-disabled={!canDrag} aria-label={canDrag ? `Drag to reorder ${task.title}` : `${task.title} uses automatic created-time order`} title={canDrag ? 'Drag within this level' : 'Switch to a manual order to drag'} onDragStart={(event) => startTaskDrag(event, trackerId, task)} onDragEnd={clearTaskDrag}><span className="drag-grip" aria-hidden="true">{Array.from({ length: 6 }, (_, index) => <i key={index} />)}</span></span>
       {hasChildren ? <button className="task-collapse" aria-label={`${task.collapsed ? 'Expand' : 'Collapse'} ${task.title}`} onClick={() => updateTask(trackerId, task.id, { collapsed: !task.collapsed })}>{task.collapsed ? '›' : '⌄'}</button> : <span className="task-leaf-dot" />}
       <input className="task-checkbox" aria-label={`Complete ${task.title}`} type="checkbox" checked={task.completed} disabled={hasChildren} onChange={() => toggleTask(projectId, trackerId, task.id)} />
       <input className="task-title-input" aria-label={`${task.title} title`} value={task.title} onChange={(event) => updateTask(trackerId, task.id, { title: event.target.value })} />
@@ -2602,7 +2658,7 @@ function TaskNode({ task, tasks, depth, trackerId, projectId, projectEstimate, a
 
     {subtaskOpen && <form className="subtask-form" onSubmit={(event) => { event.preventDefault(); addTask(projectId, trackerId, subtaskTitle, Number(subtaskEstimate), task.id); setSubtaskTitle(''); setSubtaskOpen(false) }}><input autoFocus value={subtaskTitle} onChange={(event) => setSubtaskTitle(event.target.value)} placeholder="Nested task" /><input aria-label="Subtask estimate minutes" type="number" min="1" value={subtaskEstimate} onChange={(event) => setSubtaskEstimate(event.target.value)} /><button>Add</button></form>}
 
-    {hasChildren && !task.collapsed && <div className="task-children">{children.map((child) => <TaskNode key={child.id} task={child} tasks={tasks} depth={depth + 1} trackerId={trackerId} projectId={projectId} projectEstimate={projectEstimate} addTask={addTask} toggleTask={toggleTask} updateTask={updateTask} deleteTask={deleteTask} addWorklog={addWorklog} updateWorklog={updateWorklog} deleteWorklog={deleteWorklog} draggedTask={draggedTask} taskDropTarget={taskDropTarget} startTaskDrag={startTaskDrag} clearTaskDrag={clearTaskDrag} dragOverTask={dragOverTask} dropTask={dropTask} />)}</div>}
+    {hasChildren && !task.collapsed && <div className="task-children">{children.map((child) => <TaskNode key={child.id} task={child} tasks={tasks} depth={depth + 1} trackerId={trackerId} projectId={projectId} projectEstimate={projectEstimate} addTask={addTask} toggleTask={toggleTask} updateTask={updateTask} deleteTask={deleteTask} addWorklog={addWorklog} updateWorklog={updateWorklog} deleteWorklog={deleteWorklog} draggedTask={draggedTask} taskDropTarget={taskDropTarget} taskOrderMode={taskOrderMode} startTaskDrag={startTaskDrag} clearTaskDrag={clearTaskDrag} dragOverTask={dragOverTask} dropTask={dropTask} />)}</div>}
   </div>
 }
 

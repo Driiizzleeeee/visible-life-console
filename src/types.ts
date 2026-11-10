@@ -23,6 +23,7 @@ export interface TaskWorklog {
 export interface StockTask {
   id: string
   title: string
+  createdAt?: string
   description?: string
   completed: boolean
   completedAt?: string
@@ -32,6 +33,8 @@ export interface StockTask {
   worklogs: TaskWorklog[]
   collapsed?: boolean
 }
+
+export type TaskOrderMode = 'manual' | 'manual-reverse' | 'created-asc' | 'created-desc'
 
 export const SUPPORT_WORK_TYPES = [
   'Learning',
@@ -66,6 +69,7 @@ export interface Tracker {
   tasks: StockTask[]
   collapsed?: boolean
   progressMode?: 'completion' | 'time'
+  taskOrderMode?: TaskOrderMode
   nextAction?: string
   nextActionMinutes?: number
   isUncertain?: boolean
