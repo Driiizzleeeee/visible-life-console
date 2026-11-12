@@ -29,8 +29,9 @@ You do not need to enter your whole life before the dashboard becomes useful.
 - **Boards** independently holds temporary errands, life ideas, and leisure collections, with multiple boards, a priority-matrix template, custom columns, completion, and within/across-column dragging.
 - **Mottos** manages reminders you want to see repeatedly. Dashboard preserves line breaks, supports `**bold text**`, and lets the card grow naturally while gently reducing the font size for longer entries. A shuffle-bag rotation shows every motto once per cycle and, when possible, avoids anything shown in the previous four days.
 - **Life** keeps three deliberately non-productive collections together: month-specific or gently recurring invitations, long-term Someday Dreams, and a dated Life Moments archive with optional places and reflections. Dashboard offers quick capture without turning these records into obligations.
+- **Finance** separates two long-term questions. Investment Payback compares the dated costs of a certificate or personal investment with related take-home income, while Departure Savings compares the total funds brought into Australia with occasional total-savings snapshots. It is intentionally not a daily expense tracker.
 - **Focus** holds the current task and next action. Related problems can be parked or entered intentionally without losing the return point.
-- **Manage** uses a compact category list. Category names can be edited, empty categories can be deleted, and projects can be moved by drag-and-drop or a category selector. Selecting a project opens a right-side detail drawer for direct deliverables and Supporting Work, with delivery progress, total investment, estimated remaining time, and supporting investment.
+- **Manage** uses a compact category list. Category names can be edited, empty categories can be deleted, and projects can be moved by drag-and-drop or a category selector. Selecting a project opens a right-side detail drawer for direct deliverables and Supporting Work, with delivery progress, total investment, estimated remaining time, and supporting investment. Sibling tasks can use manual order, reverse manual order, or created-time order without changing their hierarchy.
 
 ### Storage and database
 
@@ -59,6 +60,9 @@ A later multi-device version can replace local storage with a Spring Boot API an
 - Flexible Board completions appear as a third Items count in the calendar but do not affect Routine Activity
 - A Dashboard `Life in [month]` panel for pressure-free monthly invitations, quick dream capture, and direct moment recording
 - A separate Life archive for dated moments, optional places and reflections, recurring or one-month invitations, and long-term Someday Dreams; only recorded moments are counted, with no goals, rates, streaks, or Routine Activity impact
+- Financial Recovery with two independent views: Investment Payback for checking whether related take-home income has covered a personal investment, and Departure Savings for comparing current savings with a fixed first-income baseline and the total funds brought into Australia
+- Dated and categorised investment-cost entries, dated income entries, automatic cost and coverage totals, and compact collapsible histories that remain manageable as records grow
+- Occasional total-savings snapshots with notes, positive or negative changes, a visual savings trend, and protected editing for the two fixed baseline amounts—without requiring a daily transaction ledger
 - Next action, expected time, and starting difficulty
 - Parked and intentional task branches with a return cue
 - Manual activity logging and a timer
@@ -98,8 +102,9 @@ Visible Life Console 是一个本地优先的“外置工作记忆”工具。�
 - **Boards**：独立管理临时事项、生活想法和消遣清单；支持多看板、四象限模板、自定义列、卡片完成以及组内／跨组拖动。
 - **Mottos**：管理希望反复看到的标语。Dashboard 会保留换行，支持用 `**文字**` 加粗；卡片随内容自然增高，较长内容会适度缩小字号。系统采用无重复随机轮换，每轮让所有标语各出现一次，并在条件允许时避开前四天出现过的标语。
 - **Life**：统一管理三个不以生产力衡量的部分——只属于某个月或每月温和出现的生活邀请、长期 Someday Dreams，以及带日期并可选填写地点和随笔的 Life Moments 档案。Dashboard 提供快速记录入口，但不会把它们变成必须完成的责任。
+- **Finance**：将两个长期问题分开处理。Investment Payback 用证书或个人投入的逐笔成本对照相关工作的税后收入；Departure Savings 则用偶尔更新的总存款快照，对照带到澳洲的资金总额。它并不是日常记账工具。
 - **Focus**：设置当前任务和下一步行动；发现关联问题时，可以暂存支线或主动切换，并在完成后返回原任务。
-- **Manage**：使用精简分类列表管理项目；点击大类名称可以重命名或删除空的大类，项目可以拖动或通过下拉框移动到其他大类。点击项目后从右侧抽屉管理直接交付任务与 Supporting Work，并查看交付进度、累计投入、预计剩余和支持性投入。
+- **Manage**：使用精简分类列表管理项目；点击大类名称可以重命名或删除空的大类，项目可以拖动或通过下拉框移动到其他大类。点击项目后从右侧抽屉管理直接交付任务与 Supporting Work，并查看交付进度、累计投入、预计剩余和支持性投入。同级任务可以使用手动顺序、手动倒序或按创建时间排序，且不会改变原有层级。
 
 ### 数据保存与数据库
 
@@ -128,6 +133,9 @@ Visible Life Console 是一个本地优先的“外置工作记忆”工具。�
 - Flexible Boards 完成数量作为日历中的第三类 Items 记录，但不计入 Routine Activity
 - Dashboard 日历右下角的 `Life in [月份]` 模块，用于无压力的每月邀请、快速保存梦想和直接记录生活时刻
 - 独立 Life 档案：保存带日期的 Moments、可选地点与随笔、每月重复或单月邀请以及长期 Someday Dreams；只描述已经留下的时刻，不设置目标、完成率、连续记录，也不影响 Routine Activity
+- Financial Recovery 包含两个互不混算的页面：Investment Payback 用于判断相关工作的税后收入是否覆盖个人投入；Departure Savings 用于比较当前存款、第一笔收入时的固定起点和最初带到澳洲的资金总额
+- 投入成本可按日期和类型逐笔记录，收入也按日期保存；成本总额、收入总额和回收比例自动计算，并通过可折叠明细避免记录增长后卡片过长
+- 通过偶尔更新的总存款快照、备注、正负变化和趋势图查看长期存款变化；两个固定基准金额需明确进入编辑状态，无需记录每一笔日常收支
 - 下一步行动、预计用时和开始前感受
 - 任务支线的暂存、主动切换与返回提醒
 - 手动时间记录和开始／停止计时

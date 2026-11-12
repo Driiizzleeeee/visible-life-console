@@ -251,6 +251,45 @@ export interface FocusPlan {
   activeBranchId?: string
 }
 
+export interface PaybackIncomeEntry {
+  id: string
+  date: string
+  amount: number
+  note?: string
+}
+
+export type PaybackCostCategory = 'tuition' | 'certificate' | 'application' | 'document' | 'equipment' | 'other'
+
+export interface PaybackCostEntry {
+  id: string
+  date: string
+  amount: number
+  category: PaybackCostCategory
+  note?: string
+}
+
+export interface InvestmentPaybackItem {
+  id: string
+  title: string
+  note?: string
+  costEntries: PaybackCostEntry[]
+  incomeEntries: PaybackIncomeEntry[]
+}
+
+export interface SavingsSnapshot {
+  id: string
+  date: string
+  amount: number
+  note?: string
+}
+
+export interface DepartureSavingsPlan {
+  targetAmount: number
+  openingDate: string
+  openingBalance: number
+  snapshots: SavingsSnapshot[]
+}
+
 export interface AppData {
   version: 11
   categories: ProjectCategory[]
@@ -271,6 +310,8 @@ export interface AppData {
   monthlyLifeItems: MonthlyLifeItem[]
   somedayDreams: SomedayDream[]
   lifeMoments: LifeMoment[]
+  investmentPaybackItems: InvestmentPaybackItem[]
+  departureSavings: DepartureSavingsPlan
   activeTimer?: ActiveTimer
   focusPlan?: FocusPlan
 }

@@ -113,6 +113,17 @@ Visible Life Console is developed iteratively from real daily use. This log high
 
 - Ordering is applied independently within each sibling level, preserving every parent-child relationship. Dragging remains available in both manual modes and is disabled for automatic created-time sorting.
 
+### 2026-11-12
+
+#### Added
+
+- Added a Financial Recovery module with separate Investment Payback and Departure Savings pages.
+- Investment Payback compares each small investment with related take-home income without changing the savings balance.
+- Departure Savings keeps a fixed first-income baseline and uses occasional balance snapshots to show growth, decreases, major-change notes, and a savings trend without daily expense tracking.
+- Investment costs can be recorded as dated, categorised entries inside a collapsible detail section; the total investment and payback progress update automatically.
+- Income records now use a matching collapsible summary so project cards stay compact as their history grows.
+- Protected the two fixed Departure Savings amounts behind an explicit edit, save, and cancel flow to reduce accidental changes.
+
 ## 中文
 
 Visible Life Console 会根据真实的日常使用体验持续迭代。本日志只记录有意义的新增功能、调整和修复，不罗列每一项细小的实现改动。
@@ -223,3 +234,14 @@ Visible Life Console 会根据真实的日常使用体验持续迭代。本日�
 #### 调整
 
 - 排序只在各自的同级范围内独立进行，所有父子关系保持不变。两种手动模式仍可拖动，按创建时间自动排序时则暂时禁用拖动。
+
+### 2026-11-12
+
+#### 新增
+
+- 新增 Financial Recovery 模块，并将 Investment Payback 与 Departure Savings 拆分为两个独立页面。
+- Investment Payback 用相关工作的税后收入衡量每项小额投入是否已经回收，但不会改变存款余额。
+- Departure Savings 保留第一笔收入时的固定起点，并通过偶尔更新的存款快照呈现上涨、下降、大额变化备注和趋势，无需记录日常生活支出。
+- 投入成本可在折叠明细中按日期和类型逐笔记录，总投入与回收进度会自动更新。
+- 收入记录也改为同样的折叠汇总形式，长期累积后项目卡片仍能保持紧凑。
+- 将 Departure Savings 的两个固定金额改为需明确进入编辑并保存或取消，降低误操作风险。

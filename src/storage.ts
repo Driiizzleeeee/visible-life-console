@@ -24,6 +24,8 @@ export const emptyData: AppData = {
   monthlyLifeItems: [],
   somedayDreams: [],
   lifeMoments: [],
+  investmentPaybackItems: [],
+  departureSavings: { targetAmount: 0, openingDate: '', openingBalance: 0, snapshots: [] },
 }
 
 export function loadData(): AppData {
@@ -81,7 +83,14 @@ export function parseBackup(text: string): AppData {
 }
 
 function migrateData(value: unknown): AppData {
-  const parsed = value as Partial<AppData> & { version?: number; projects?: Array<AppData['projects'][number] & { categoryId?: string }> }
+  const parsed = value as Omit<Partial<AppData>, 'investmentPaybackItems'> & {
+    version?: number
+    projects?: Array<AppData['projects'][number] & { categoryId?: string }>
+    investmentPaybackItems?: Array<Omit<AppData['investmentPaybackItems'][number], 'costEntries'> & {
+      costEntries?: AppData['investmentPaybackItems'][number]['costEntries']
+      initialCost?: number
+    }>
+  }
   if (
     !READABLE_DATA_VERSIONS.includes(parsed.version ?? 0) ||
     !Array.isArray(parsed.projects) ||
@@ -147,6 +156,31 @@ function migrateData(value: unknown): AppData {
     monthlyLifeItems: Array.isArray(parsed.monthlyLifeItems) ? parsed.monthlyLifeItems : [],
     somedayDreams: Array.isArray(parsed.somedayDreams) ? parsed.somedayDreams : [],
     lifeMoments: Array.isArray(parsed.lifeMoments) ? parsed.lifeMoments : [],
+    investmentPaybackItems: Array.isArray(parsed.investmentPaybackItems) ? parsed.investmentPaybackItems.map((item) => {
+      const { initialCost: legacyInitialCost, ...currentItem } = item
+      return {
+        ...currentItem,
+        costEntries: Array.isArray(item.costEntries) ? item.costEntries.map((entry) => ({
+          ...entry,
+          date: typeof entry.date === 'string' ? entry.date : '',
+          amount: Math.max(0, Number(entry.amount) || 0),
+          category: ['tuition', 'certificate', 'application', 'document', 'equipment', 'other'].includes(entry.category) ? entry.category : 'other',
+        })) : Number(legacyInitialCost) > 0 ? [{
+          id: `opening-cost-${item.id}`,
+          date: '',
+          amount: Math.max(0, Number(legacyInitialCost) || 0),
+          category: 'other',
+          note: 'Opening cost',
+        }] : [],
+        incomeEntries: Array.isArray(item.incomeEntries) ? item.incomeEntries.map((entry) => ({ ...entry, amount: Math.max(0, Number(entry.amount) || 0) })) : [],
+      }
+    }) : [],
+    departureSavings: parsed.departureSavings && typeof parsed.departureSavings === 'object' ? {
+      targetAmount: Math.max(0, Number(parsed.departureSavings.targetAmount) || 0),
+      openingDate: typeof parsed.departureSavings.openingDate === 'string' ? parsed.departureSavings.openingDate : '',
+      openingBalance: Math.max(0, Number(parsed.departureSavings.openingBalance) || 0),
+      snapshots: Array.isArray(parsed.departureSavings.snapshots) ? parsed.departureSavings.snapshots.map((snapshot) => ({ ...snapshot, amount: Math.max(0, Number(snapshot.amount) || 0) })) : [],
+    } : { targetAmount: 0, openingDate: '', openingBalance: 0, snapshots: [] },
   }
 }
 
