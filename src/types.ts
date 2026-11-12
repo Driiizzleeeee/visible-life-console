@@ -283,10 +283,18 @@ export interface SavingsSnapshot {
   note?: string
 }
 
+export interface BroughtFundsEntry {
+  id: string
+  date: string
+  amount: number
+  note?: string
+}
+
 export interface DepartureSavingsPlan {
   targetAmount: number
   openingDate: string
   openingBalance: number
+  fundEntries: BroughtFundsEntry[]
   snapshots: SavingsSnapshot[]
 }
 

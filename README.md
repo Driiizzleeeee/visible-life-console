@@ -62,7 +62,7 @@ A later multi-device version can replace local storage with a Spring Boot API an
 - A separate Life archive for dated moments, optional places and reflections, recurring or one-month invitations, and long-term Someday Dreams; only recorded moments are counted, with no goals, rates, streaks, or Routine Activity impact
 - Financial Recovery with two independent views: Investment Payback for checking whether related take-home income has covered a personal investment, and Departure Savings for comparing current savings with a fixed first-income baseline and the total funds brought into Australia
 - Dated and categorised investment-cost entries, dated income entries, automatic cost and coverage totals, and compact collapsible histories that remain manageable as records grow
-- Occasional total-savings snapshots with notes, positive or negative changes, a visual savings trend, and protected editing for the two fixed baseline amounts—without requiring a daily transaction ledger
+- A collapsible dated breakdown for the funds brought into Australia, plus occasional total-savings snapshots with notes, positive or negative changes, a visual savings trend, and protected editing—without requiring a daily transaction ledger
 - Next action, expected time, and starting difficulty
 - Parked and intentional task branches with a return cue
 - Manual activity logging and a timer
@@ -135,7 +135,7 @@ Visible Life Console 是一个本地优先的“外置工作记忆”工具。�
 - 独立 Life 档案：保存带日期的 Moments、可选地点与随笔、每月重复或单月邀请以及长期 Someday Dreams；只描述已经留下的时刻，不设置目标、完成率、连续记录，也不影响 Routine Activity
 - Financial Recovery 包含两个互不混算的页面：Investment Payback 用于判断相关工作的税后收入是否覆盖个人投入；Departure Savings 用于比较当前存款、第一笔收入时的固定起点和最初带到澳洲的资金总额
 - 投入成本可按日期和类型逐笔记录，收入也按日期保存；成本总额、收入总额和回收比例自动计算，并通过可折叠明细避免记录增长后卡片过长
-- 通过偶尔更新的总存款快照、备注、正负变化和趋势图查看长期存款变化；两个固定基准金额需明确进入编辑状态，无需记录每一笔日常收支
+- 带到澳洲的资金总额支持可折叠的逐笔日期明细；同时通过偶尔更新的总存款快照、备注、正负变化和趋势图查看长期变化，无需记录每一笔日常收支
 - 下一步行动、预计用时和开始前感受
 - 任务支线的暂存、主动切换与返回提醒
 - 手动时间记录和开始／停止计时

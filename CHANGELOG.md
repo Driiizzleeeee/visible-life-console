@@ -127,6 +127,7 @@ Visible Life Console is developed iteratively from real daily use. This log high
 #### Changed
 
 - Cost and income histories now run from earliest to latest, and the Add Cost row is visually separated from saved records.
+- Total Brought into Australia is now calculated from dated detail entries that appear only while the fixed amounts are being edited.
 
 ## 中文
 
@@ -253,3 +254,4 @@ Visible Life Console 会根据真实的日常使用体验持续迭代。本日�
 #### 调整
 
 - 成本与收入明细改为由早到晚排列，并用分割线区分 Add Cost 输入行和已保存记录。
+- Total Brought into Australia 改为由带日期的明细自动汇总，且明细只在编辑固定金额时出现。

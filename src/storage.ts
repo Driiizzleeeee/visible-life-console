@@ -25,7 +25,7 @@ export const emptyData: AppData = {
   somedayDreams: [],
   lifeMoments: [],
   investmentPaybackItems: [],
-  departureSavings: { targetAmount: 0, openingDate: '', openingBalance: 0, snapshots: [] },
+  departureSavings: { targetAmount: 0, openingDate: '', openingBalance: 0, fundEntries: [], snapshots: [] },
 }
 
 export function loadData(): AppData {
@@ -175,12 +175,26 @@ function migrateData(value: unknown): AppData {
         incomeEntries: Array.isArray(item.incomeEntries) ? item.incomeEntries.map((entry) => ({ ...entry, amount: Math.max(0, Number(entry.amount) || 0) })) : [],
       }
     }) : [],
-    departureSavings: parsed.departureSavings && typeof parsed.departureSavings === 'object' ? {
-      targetAmount: Math.max(0, Number(parsed.departureSavings.targetAmount) || 0),
-      openingDate: typeof parsed.departureSavings.openingDate === 'string' ? parsed.departureSavings.openingDate : '',
-      openingBalance: Math.max(0, Number(parsed.departureSavings.openingBalance) || 0),
-      snapshots: Array.isArray(parsed.departureSavings.snapshots) ? parsed.departureSavings.snapshots.map((snapshot) => ({ ...snapshot, amount: Math.max(0, Number(snapshot.amount) || 0) })) : [],
-    } : { targetAmount: 0, openingDate: '', openingBalance: 0, snapshots: [] },
+    departureSavings: parsed.departureSavings && typeof parsed.departureSavings === 'object' ? (() => {
+      const legacyTargetAmount = Math.max(0, Number(parsed.departureSavings.targetAmount) || 0)
+      const fundEntries = Array.isArray(parsed.departureSavings.fundEntries) ? parsed.departureSavings.fundEntries.map((entry) => ({
+        ...entry,
+        date: typeof entry.date === 'string' ? entry.date : '',
+        amount: Math.max(0, Number(entry.amount) || 0),
+      })) : legacyTargetAmount > 0 ? [{
+        id: 'opening-brought-funds',
+        date: '',
+        amount: legacyTargetAmount,
+        note: 'Opening amount',
+      }] : []
+      return {
+        targetAmount: fundEntries.reduce((sum, entry) => sum + entry.amount, 0),
+        openingDate: typeof parsed.departureSavings.openingDate === 'string' ? parsed.departureSavings.openingDate : '',
+        openingBalance: Math.max(0, Number(parsed.departureSavings.openingBalance) || 0),
+        fundEntries,
+        snapshots: Array.isArray(parsed.departureSavings.snapshots) ? parsed.departureSavings.snapshots.map((snapshot) => ({ ...snapshot, amount: Math.max(0, Number(snapshot.amount) || 0) })) : [],
+      }
+    })() : { targetAmount: 0, openingDate: '', openingBalance: 0, fundEntries: [], snapshots: [] },
   }
 }
 

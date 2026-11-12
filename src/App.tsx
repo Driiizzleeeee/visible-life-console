@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
-import { CATEGORIES, SUPPORT_WORK_TYPES, type Activity, type ActualDifficulty, type AppData, type BoardItem, type CalendarEvent, type CalendarEventColor, type Category, type Difficulty, type InvestmentPaybackItem, type LifeBoard, type LifeMoment, type Motto, type MonthlyLifeItem, type PaybackCostCategory, type PaybackCostEntry, type PaybackIncomeEntry, type Project, type ProjectCategory, type RoutineTask, type SavingsSnapshot, type SomedayDream, type StockTask, type SupportWorkItem, type SupportWorkType, type TaskOrderMode, type TaskWorklog } from './types'
+import { CATEGORIES, SUPPORT_WORK_TYPES, type Activity, type ActualDifficulty, type AppData, type BoardItem, type BroughtFundsEntry, type CalendarEvent, type CalendarEventColor, type Category, type Difficulty, type InvestmentPaybackItem, type LifeBoard, type LifeMoment, type Motto, type MonthlyLifeItem, type PaybackCostCategory, type PaybackCostEntry, type PaybackIncomeEntry, type Project, type ProjectCategory, type RoutineTask, type SavingsSnapshot, type SomedayDream, type StockTask, type SupportWorkItem, type SupportWorkType, type TaskOrderMode, type TaskWorklog } from './types'
 import { downloadCsv, downloadJson, loadData, parseBackup, saveData } from './storage'
 
 const COLORS = ['#e85d3f', '#397c68', '#5573c7', '#d39a27', '#9366a5', '#287d9b']
@@ -1204,8 +1204,13 @@ function FinancialRecoveryPage({ data, setData, setNotice }: {
   const [snapshotAmount, setSnapshotAmount] = useState('')
   const [snapshotNote, setSnapshotNote] = useState('')
   const [editingFixedSavings, setEditingFixedSavings] = useState(false)
-  const [fixedSavingsDraft, setFixedSavingsDraft] = useState({ targetAmount: 0, openingBalance: 0 })
+  const [fundDetailsExpanded, setFundDetailsExpanded] = useState(false)
+  const [fundDate, setFundDate] = useState(localDate())
+  const [fundAmount, setFundAmount] = useState('')
+  const [fundNote, setFundNote] = useState('')
+  const [fixedSavingsDraft, setFixedSavingsDraft] = useState<{ openingBalance: number; fundEntries: BroughtFundsEntry[] }>({ openingBalance: 0, fundEntries: [] })
   const plan = data.departureSavings
+  const draftTargetAmount = fixedSavingsDraft.fundEntries.reduce((sum, entry) => sum + entry.amount, 0)
   const snapshots = [...plan.snapshots].sort((left, right) => left.date.localeCompare(right.date))
   const latestSnapshot = snapshots.at(-1)
   const currentSavings = latestSnapshot?.amount ?? plan.openingBalance
@@ -1251,19 +1256,41 @@ function FinancialRecoveryPage({ data, setData, setNotice }: {
   }
 
   function beginFixedSavingsEdit() {
-    setFixedSavingsDraft({ targetAmount: plan.targetAmount, openingBalance: plan.openingBalance })
+    setFixedSavingsDraft({ openingBalance: plan.openingBalance, fundEntries: plan.fundEntries.map((entry) => ({ ...entry })) })
+    setFundDetailsExpanded(false)
     setEditingFixedSavings(true)
   }
 
   function cancelFixedSavingsEdit() {
-    setFixedSavingsDraft({ targetAmount: plan.targetAmount, openingBalance: plan.openingBalance })
+    setFixedSavingsDraft({ openingBalance: plan.openingBalance, fundEntries: plan.fundEntries.map((entry) => ({ ...entry })) })
+    setFundDetailsExpanded(false)
     setEditingFixedSavings(false)
   }
 
   function saveFixedSavingsEdit() {
-    updatePlan(fixedSavingsDraft)
+    updatePlan({ ...fixedSavingsDraft, targetAmount: draftTargetAmount })
+    setFundDetailsExpanded(false)
     setEditingFixedSavings(false)
     setNotice('Fixed savings amounts updated.')
+  }
+
+  function addFundEntry(event: FormEvent) {
+    event.preventDefault()
+    const amount = Number(fundAmount)
+    if (!fundDate || !Number.isFinite(amount) || amount <= 0) return
+    const entry: BroughtFundsEntry = { id: id(), date: fundDate, amount, note: fundNote.trim() || undefined }
+    setFixedSavingsDraft((current) => ({ ...current, fundEntries: [...current.fundEntries, entry] }))
+    setFundAmount('')
+    setFundNote('')
+  }
+
+  function updateFundEntry(entryId: string, patch: Partial<BroughtFundsEntry>) {
+    setFixedSavingsDraft((current) => ({ ...current, fundEntries: current.fundEntries.map((entry) => entry.id === entryId ? { ...entry, ...patch } : entry) }))
+  }
+
+  function deleteFundEntry(entry: BroughtFundsEntry) {
+    if (!window.confirm(`Remove the ${entry.date || 'undated'} amount from this draft?`)) return
+    setFixedSavingsDraft((current) => ({ ...current, fundEntries: current.fundEntries.filter((item) => item.id !== entry.id) }))
   }
 
   function addSnapshot(event: FormEvent) {
@@ -1315,10 +1342,30 @@ function FinancialRecoveryPage({ data, setData, setNotice }: {
         <div className="card-heading"><div><span className="number">01</span><h2>Set the fixed starting point</h2></div><div className="fixed-savings-actions">{editingFixedSavings ? <><button type="button" className="quiet-button" onClick={cancelFixedSavingsEdit}>Cancel</button><button type="button" className="primary compact-button" onClick={saveFixedSavingsEdit}>Save amounts</button></> : <button type="button" className="quiet-button" onClick={beginFixedSavingsEdit}>Edit amounts</button>}<span className="count-pill">AUD</span></div></div>
         <p className="finance-explainer">The opening balance is a historical marker. After setup, update only the current total through occasional savings snapshots.</p>
         <div className="departure-settings-grid">
-          <label>Total brought into Australia{editingFixedSavings ? <MoneyInput ariaLabel="Departure savings target" value={fixedSavingsDraft.targetAmount} onCommit={(targetAmount) => setFixedSavingsDraft((current) => ({ ...current, targetAmount }))} /> : <strong className="locked-money-value">{aud(plan.targetAmount)}</strong>}</label>
+          <label>Total brought into Australia<strong className="locked-money-value">{aud(editingFixedSavings ? draftTargetAmount : plan.targetAmount)}</strong><small>{editingFixedSavings ? `${fixedSavingsDraft.fundEntries.length} detail ${fixedSavingsDraft.fundEntries.length === 1 ? 'entry' : 'entries'}` : 'Fixed total'}</small></label>
           <label>First-income date<input type="date" value={plan.openingDate} onChange={(event) => updatePlan({ openingDate: event.target.value })} /></label>
           <label>Balance on that date{editingFixedSavings ? <MoneyInput ariaLabel="Opening savings balance" value={fixedSavingsDraft.openingBalance} onCommit={(openingBalance) => setFixedSavingsDraft((current) => ({ ...current, openingBalance }))} /> : <strong className="locked-money-value">{aud(plan.openingBalance)}</strong>}</label>
         </div>
+        {editingFixedSavings && <section className="departure-funds-editor">
+          <button type="button" className="payback-section-toggle" aria-expanded={fundDetailsExpanded} onClick={() => setFundDetailsExpanded((current) => !current)}>
+            <span><i>{fundDetailsExpanded ? '▾' : '▸'}</i>Funds details · {fixedSavingsDraft.fundEntries.length} {fixedSavingsDraft.fundEntries.length === 1 ? 'entry' : 'entries'}</span>
+            <strong>{aud(draftTargetAmount)}</strong>
+          </button>
+          {fundDetailsExpanded && <div className="departure-funds-content">
+            <form className="departure-funds-form" onSubmit={addFundEntry}>
+              <input aria-label="Funds date" type="date" value={fundDate} onChange={(event) => setFundDate(event.target.value)} />
+              <input aria-label="Funds amount" type="number" min="0.01" step="0.01" value={fundAmount} onChange={(event) => setFundAmount(event.target.value)} placeholder="Amount (AUD)" />
+              <input value={fundNote} onChange={(event) => setFundNote(event.target.value)} placeholder="Transfer or source note" />
+              <button>Add amount</button>
+            </form>
+            {fixedSavingsDraft.fundEntries.length === 0 ? <p className="project-section-empty">No amounts recorded. Add the first amount before saving.</p> : <div className="departure-funds-list">{[...fixedSavingsDraft.fundEntries].sort((left, right) => left.date.localeCompare(right.date)).map((entry) => <div key={entry.id}>
+              <input aria-label="Funds date" type="date" value={entry.date} onChange={(event) => updateFundEntry(entry.id, { date: event.target.value })} />
+              <MoneyInput ariaLabel={`${entry.date || 'Undated'} funds amount`} value={entry.amount} onCommit={(amount) => updateFundEntry(entry.id, { amount })} />
+              <input value={entry.note ?? ''} onChange={(event) => updateFundEntry(entry.id, { note: event.target.value || undefined })} placeholder="Transfer or source note" />
+              <button aria-label={`Remove ${entry.date || 'undated'} funds amount`} onClick={() => deleteFundEntry(entry)}>×</button>
+            </div>)}</div>}
+          </div>}
+        </section>}
       </article>
 
       <article className="card departure-overview-card">

@@ -564,7 +564,17 @@ label input, label select, label textarea { display: block; margin-top: 6px; }
 .departure-settings-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .departure-settings-grid label { padding: 11px; border-radius: 9px; background: #f2f1eb; }
 .departure-settings-grid input { margin-top: 7px; }
+.departure-settings-grid label small { display: block; margin-top: 3px; color: var(--muted); font-size: 7px; }
 .locked-money-value { display: block; margin-top: 10px; color: var(--ink); font: 750 16px 'Segoe UI', sans-serif; }
+.departure-funds-editor { margin-top: 10px; border: 1px solid var(--line); border-radius: 9px; background: #faf9f5; }
+.departure-funds-content { padding: 0 10px 10px; border-top: 1px solid var(--line); }
+.departure-funds-form { display: grid; grid-template-columns: 130px 150px minmax(150px, 1fr) auto; gap: 7px; margin-bottom: 8px; padding: 10px 0 12px; border-bottom: 1px solid var(--line); }
+.departure-funds-form input, .departure-funds-form button { min-width: 0; padding: 7px 8px; font-size: 8px; }
+.departure-funds-form button { border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--green); cursor: pointer; font-weight: 750; }
+.departure-funds-list { display: grid; gap: 5px; }
+.departure-funds-list > div { display: grid; grid-template-columns: 130px 150px minmax(150px, 1fr) 24px; gap: 7px; align-items: center; }
+.departure-funds-list input { min-width: 0; padding: 6px 7px; font-size: 8px; }
+.departure-funds-list button { border: 0; background: none; color: #a14c3b; cursor: pointer; font-size: 10px; font-weight: 750; }
 .departure-overview-card { overflow: hidden; background: linear-gradient(135deg, #fbfaf6, #f1f5f2); }
 .departure-total { display: flex; align-items: baseline; gap: 14px; }
 .departure-total > span { color: var(--muted); font-size: 10px; font-weight: 750; text-transform: uppercase; letter-spacing: .07em; }
@@ -959,8 +969,8 @@ label input, label select, label textarea { display: block; margin-top: 6px; }
   .life-moment-card > button { justify-self: start; }
   .finance-tabs { width: 100%; }
   .finance-tabs button { flex: 1; }
-  .payback-create-form, .departure-settings-grid, .payback-metrics, .payback-cost-form, .payback-income-form, .savings-snapshot-form, .departure-breakdown { grid-template-columns: 1fr; }
-  .payback-cost-list > div, .payback-income-list > div, .savings-history-list > div { grid-template-columns: 1fr; padding: 9px; border: 1px solid var(--line); border-radius: 8px; }
+  .payback-create-form, .departure-settings-grid, .payback-metrics, .payback-cost-form, .payback-income-form, .departure-funds-form, .savings-snapshot-form, .departure-breakdown { grid-template-columns: 1fr; }
+  .payback-cost-list > div, .payback-income-list > div, .departure-funds-list > div, .savings-history-list > div { grid-template-columns: 1fr; padding: 9px; border: 1px solid var(--line); border-radius: 8px; }
   .payback-card-heading { grid-template-columns: minmax(0, 1fr) auto; }
   .payback-card-heading > button { grid-column: 2; }
   .departure-total { align-items: flex-start; flex-direction: column; gap: 3px; }
