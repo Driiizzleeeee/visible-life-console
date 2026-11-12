@@ -543,7 +543,7 @@ label input, label select, label textarea { display: block; margin-top: 6px; }
 .payback-section-toggle i { width: 10px; color: var(--muted); font-style: normal; }
 .payback-section-toggle strong { flex: none; font-size: 10px; }
 .payback-cost-content, .payback-income-content { padding: 0 10px 10px; border-top: 1px solid var(--line); }
-.payback-cost-form { display: grid; grid-template-columns: 120px 110px 105px minmax(110px, 1fr) auto; gap: 6px; padding: 10px 0; }
+.payback-cost-form { display: grid; grid-template-columns: 120px 110px 105px minmax(110px, 1fr) auto; gap: 6px; margin-bottom: 8px; padding: 10px 0 12px; border-bottom: 1px solid var(--line); }
 .payback-cost-form input, .payback-cost-form select, .payback-cost-form button { min-width: 0; padding: 7px 8px; font-size: 8px; }
 .payback-cost-form button { border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--green); cursor: pointer; font-weight: 750; }
 .payback-cost-list { display: grid; gap: 5px; }

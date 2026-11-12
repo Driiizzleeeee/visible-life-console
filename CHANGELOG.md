@@ -124,6 +124,10 @@ Visible Life Console is developed iteratively from real daily use. This log high
 - Income records now use a matching collapsible summary so project cards stay compact as their history grows.
 - Protected the two fixed Departure Savings amounts behind an explicit edit, save, and cancel flow to reduce accidental changes.
 
+#### Changed
+
+- Cost and income histories now run from earliest to latest, and the Add Cost row is visually separated from saved records.
+
 ## 中文
 
 Visible Life Console 会根据真实的日常使用体验持续迭代。本日志只记录有意义的新增功能、调整和修复，不罗列每一项细小的实现改动。
@@ -245,3 +249,7 @@ Visible Life Console 会根据真实的日常使用体验持续迭代。本日�
 - 投入成本可在折叠明细中按日期和类型逐笔记录，总投入与回收进度会自动更新。
 - 收入记录也改为同样的折叠汇总形式，长期累积后项目卡片仍能保持紧凑。
 - 将 Departure Savings 的两个固定金额改为需明确进入编辑并保存或取消，降低误操作风险。
+
+#### 调整
+
+- 成本与收入明细改为由早到晚排列，并用分割线区分 Add Cost 输入行和已保存记录。

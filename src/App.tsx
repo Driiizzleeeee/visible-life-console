@@ -1453,7 +1453,7 @@ function PaybackProjectCard({ item, onChange, onDelete }: { item: InvestmentPayb
           <input value={costNote} onChange={(event) => setCostNote(event.target.value)} placeholder="What was this for?" />
           <button>Add cost</button>
         </form>
-        {item.costEntries.length === 0 ? <p className="project-section-empty">No costs recorded yet.</p> : <div className="payback-cost-list">{[...item.costEntries].sort((left, right) => right.date.localeCompare(left.date)).map((entry) => <div key={entry.id}>
+        {item.costEntries.length === 0 ? <p className="project-section-empty">No costs recorded yet.</p> : <div className="payback-cost-list">{[...item.costEntries].sort((left, right) => left.date.localeCompare(right.date)).map((entry) => <div key={entry.id}>
           <input aria-label="Cost date" type="date" value={entry.date} onChange={(event) => updateCost(entry.id, { date: event.target.value })} />
           <select aria-label="Cost type" value={entry.category} onChange={(event) => updateCost(entry.id, { category: event.target.value as PaybackCostCategory })}>
             <option value="tuition">Tuition</option><option value="certificate">Certificate</option><option value="application">Application</option><option value="document">Document</option><option value="equipment">Equipment</option><option value="other">Other</option>
@@ -1476,7 +1476,7 @@ function PaybackProjectCard({ item, onChange, onDelete }: { item: InvestmentPayb
           <input value={incomeNote} onChange={(event) => setIncomeNote(event.target.value)} placeholder="Job or note" />
           <button>Add income</button>
         </form>
-        {item.incomeEntries.length === 0 ? <p className="project-section-empty">No related income recorded yet.</p> : <div className="payback-income-list">{[...item.incomeEntries].sort((left, right) => right.date.localeCompare(left.date)).map((entry) => <div key={entry.id}>
+        {item.incomeEntries.length === 0 ? <p className="project-section-empty">No related income recorded yet.</p> : <div className="payback-income-list">{[...item.incomeEntries].sort((left, right) => left.date.localeCompare(right.date)).map((entry) => <div key={entry.id}>
           <input aria-label="Income date" type="date" value={entry.date} onChange={(event) => updateIncome(entry.id, { date: event.target.value })} />
           <MoneyInput ariaLabel={`${entry.date} income amount`} value={entry.amount} onCommit={(amount) => updateIncome(entry.id, { amount })} />
           <input value={entry.note ?? ''} onChange={(event) => updateIncome(entry.id, { note: event.target.value || undefined })} placeholder="Job or note" />
