@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
-import { CATEGORIES, SUPPORT_WORK_TYPES, type Activity, type ActualDifficulty, type AppData, type BoardItem, type CalendarEvent, type CalendarEventColor, type Category, type Difficulty, type LifeBoard, type LifeMoment, type Motto, type MonthlyLifeItem, type Project, type ProjectCategory, type RoutineTask, type SomedayDream, type StockTask, type SupportWorkItem, type SupportWorkType, type TaskOrderMode, type TaskWorklog } from './types'
+import { CATEGORIES, SUPPORT_WORK_TYPES, type Activity, type ActualDifficulty, type AppData, type BoardItem, type CalendarEvent, type CalendarEventColor, type Category, type Difficulty, type InvestmentPaybackItem, type LifeBoard, type LifeMoment, type Motto, type MonthlyLifeItem, type PaybackCostCategory, type PaybackCostEntry, type PaybackIncomeEntry, type Project, type ProjectCategory, type RoutineTask, type SavingsSnapshot, type SomedayDream, type StockTask, type SupportWorkItem, type SupportWorkType, type TaskOrderMode, type TaskWorklog } from './types'
 import { downloadCsv, downloadJson, loadData, parseBackup, saveData } from './storage'
 
 const COLORS = ['#e85d3f', '#397c68', '#5573c7', '#d39a27', '#9366a5', '#287d9b']
@@ -30,6 +30,10 @@ function localDate(date = new Date()) {
 
 function localMonth(date = new Date()) {
   return localDate(date).slice(0, 7)
+}
+
+function aud(value: number) {
+  return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(value)
 }
 
 function fitTextareaHeight(element: HTMLTextAreaElement | null) {
@@ -216,7 +220,7 @@ function projectMetrics(project: Project) {
 
 export default function App() {
   const [data, setData] = useState<AppData>(loadData)
-  const [page, setPage] = useState<'dashboard' | 'focus' | 'manage' | 'routines' | 'boards' | 'mottos' | 'life'>('dashboard')
+  const [page, setPage] = useState<'dashboard' | 'focus' | 'manage' | 'routines' | 'boards' | 'mottos' | 'life' | 'finance'>('dashboard')
   const [weekOffset, setWeekOffset] = useState(0)
   const [logOpen, setLogOpen] = useState(false)
   const [notice, setNotice] = useState('')
@@ -244,6 +248,7 @@ export default function App() {
           <button className={page === 'boards' ? 'active' : ''} onClick={() => setPage('boards')}>Boards</button>
           <button className={page === 'mottos' ? 'active' : ''} onClick={() => setPage('mottos')}>Mottos</button>
           <button className={page === 'life' ? 'active' : ''} onClick={() => setPage('life')}>Life</button>
+          <button className={page === 'finance' ? 'active' : ''} onClick={() => setPage('finance')}>Finance</button>
         </nav>
         <button className="primary compact" onClick={() => setLogOpen(true)}>＋ Log activity</button>
       </header>
@@ -275,8 +280,10 @@ export default function App() {
           <BoardsPage data={data} setData={setData} />
         ) : page === 'mottos' ? (
           <MottoManager data={data} setData={setData} />
-        ) : (
+        ) : page === 'life' ? (
           <LifePage data={data} setData={setData} setNotice={setNotice} />
+        ) : (
+          <FinancialRecoveryPage data={data} setData={setData} setNotice={setNotice} />
         )}
       </main>
 
@@ -1182,6 +1189,353 @@ function LifePage({ data, setData, setNotice }: {
       </div>})}</div>}
     </section>}
   </>
+}
+
+function FinancialRecoveryPage({ data, setData, setNotice }: {
+  data: AppData
+  setData: React.Dispatch<React.SetStateAction<AppData>>
+  setNotice: (value: string) => void
+}) {
+  const [tab, setTab] = useState<'payback' | 'savings'>('payback')
+  const [projectTitle, setProjectTitle] = useState('')
+  const [projectCost, setProjectCost] = useState('')
+  const [projectCostDate, setProjectCostDate] = useState(localDate())
+  const [snapshotDate, setSnapshotDate] = useState(localDate())
+  const [snapshotAmount, setSnapshotAmount] = useState('')
+  const [snapshotNote, setSnapshotNote] = useState('')
+  const [editingFixedSavings, setEditingFixedSavings] = useState(false)
+  const [fixedSavingsDraft, setFixedSavingsDraft] = useState({ targetAmount: 0, openingBalance: 0 })
+  const plan = data.departureSavings
+  const snapshots = [...plan.snapshots].sort((left, right) => left.date.localeCompare(right.date))
+  const latestSnapshot = snapshots.at(-1)
+  const currentSavings = latestSnapshot?.amount ?? plan.openingBalance
+  const previousSavings = snapshots.length > 1 ? snapshots[snapshots.length - 2].amount : plan.openingBalance
+  const netChange = currentSavings - plan.openingBalance
+  const lastChange = currentSavings - previousSavings
+  const remaining = Math.max(0, plan.targetAmount - currentSavings)
+  const progress = plan.targetAmount > 0 ? currentSavings / plan.targetAmount * 100 : 0
+  const openingWidth = plan.targetAmount > 0 ? Math.min(currentSavings, plan.openingBalance, plan.targetAmount) / plan.targetAmount * 100 : 0
+  const builtWidth = plan.targetAmount > 0 && netChange > 0 ? Math.min(netChange, Math.max(0, plan.targetAmount - plan.openingBalance)) / plan.targetAmount * 100 : 0
+  const lossWidth = plan.targetAmount > 0 && netChange < 0 ? Math.min(-netChange, plan.targetAmount) / plan.targetAmount * 100 : 0
+  const openingMarker = plan.targetAmount > 0 ? Math.min(100, plan.openingBalance / plan.targetAmount * 100) : 0
+
+  function addPaybackItem(event: FormEvent) {
+    event.preventDefault()
+    const title = projectTitle.trim()
+    const initialCost = Number(projectCost)
+    if (!title || !Number.isFinite(initialCost) || initialCost <= 0) return
+    const item: InvestmentPaybackItem = {
+      id: id(),
+      title,
+      note: '',
+      costEntries: [{ id: id(), date: projectCostDate, amount: initialCost, category: 'other', note: 'Opening cost' }],
+      incomeEntries: [],
+    }
+    setData((current) => ({ ...current, investmentPaybackItems: [...current.investmentPaybackItems, item] }))
+    setProjectTitle('')
+    setProjectCost('')
+    setNotice('Payback project added.')
+  }
+
+  function updatePaybackItem(itemId: string, next: InvestmentPaybackItem) {
+    setData((current) => ({ ...current, investmentPaybackItems: current.investmentPaybackItems.map((item) => item.id === itemId ? next : item) }))
+  }
+
+  function deletePaybackItem(item: InvestmentPaybackItem) {
+    if (!window.confirm(`Delete “${item.title}” and all of its income records?`)) return
+    setData((current) => ({ ...current, investmentPaybackItems: current.investmentPaybackItems.filter((entry) => entry.id !== item.id) }))
+  }
+
+  function updatePlan(patch: Partial<AppData['departureSavings']>) {
+    setData((current) => ({ ...current, departureSavings: { ...current.departureSavings, ...patch } }))
+  }
+
+  function beginFixedSavingsEdit() {
+    setFixedSavingsDraft({ targetAmount: plan.targetAmount, openingBalance: plan.openingBalance })
+    setEditingFixedSavings(true)
+  }
+
+  function cancelFixedSavingsEdit() {
+    setFixedSavingsDraft({ targetAmount: plan.targetAmount, openingBalance: plan.openingBalance })
+    setEditingFixedSavings(false)
+  }
+
+  function saveFixedSavingsEdit() {
+    updatePlan(fixedSavingsDraft)
+    setEditingFixedSavings(false)
+    setNotice('Fixed savings amounts updated.')
+  }
+
+  function addSnapshot(event: FormEvent) {
+    event.preventDefault()
+    const amount = Number(snapshotAmount)
+    if (!snapshotDate || (plan.openingDate && snapshotDate < plan.openingDate) || !Number.isFinite(amount) || amount < 0) return
+    const snapshot: SavingsSnapshot = { id: id(), date: snapshotDate, amount, note: snapshotNote.trim() || undefined }
+    updatePlan({ snapshots: [...plan.snapshots, snapshot] })
+    setSnapshotAmount('')
+    setSnapshotNote('')
+    setNotice('Savings snapshot saved.')
+  }
+
+  function updateSnapshot(snapshotId: string, patch: Partial<SavingsSnapshot>) {
+    updatePlan({ snapshots: plan.snapshots.map((snapshot) => snapshot.id === snapshotId ? { ...snapshot, ...patch } : snapshot) })
+  }
+
+  function deleteSnapshot(snapshot: SavingsSnapshot) {
+    if (!window.confirm(`Delete the ${snapshot.date} savings snapshot?`)) return
+    updatePlan({ snapshots: plan.snapshots.filter((entry) => entry.id !== snapshot.id) })
+  }
+
+  const snapshotChanges = new Map(snapshots.map((snapshot, index) => [snapshot.id, snapshot.amount - (index === 0 ? plan.openingBalance : snapshots[index - 1].amount)]))
+
+  return <>
+    <section className="hero-row finance-hero"><div><p className="eyebrow">Financial recovery</p><h1>See what paid back — and what stayed with you.</h1><p className="muted">Project income and departure savings answer different questions, so they stay separate.</p></div></section>
+    <div className="finance-tabs" role="tablist">
+      <button className={tab === 'payback' ? 'active' : ''} onClick={() => setTab('payback')}>Investment Payback</button>
+      <button className={tab === 'savings' ? 'active' : ''} onClick={() => setTab('savings')}>Departure Savings</button>
+    </div>
+
+    {tab === 'payback' && <section className="finance-page">
+      <article className="card finance-intro-card">
+        <div className="card-heading"><div><span className="number">01</span><h2>Investment payback</h2></div><span className="count-pill">Income coverage, not bank balance</span></div>
+        <p className="finance-explainer">Create a small investment such as a certificate, then record the take-home income produced by related work. These records never change Departure Savings.</p>
+        <form className="payback-create-form" onSubmit={addPaybackItem}>
+          <input value={projectTitle} onChange={(event) => setProjectTitle(event.target.value)} placeholder="Certificate or investment" />
+          <label><span>First cost date</span><input type="date" value={projectCostDate} onChange={(event) => setProjectCostDate(event.target.value)} /></label>
+          <label><span>First cost (AUD)</span><input type="number" min="0.01" step="0.01" value={projectCost} onChange={(event) => setProjectCost(event.target.value)} placeholder="5000" /></label>
+          <button className="primary">Add payback project</button>
+        </form>
+      </article>
+
+      {data.investmentPaybackItems.length === 0 ? <article className="card finance-empty"><strong>No payback projects yet.</strong><p>Add a certificate, course, or other investment whose related work income you want to compare with its original cost.</p></article> : <div className="payback-grid">{data.investmentPaybackItems.map((item) => <PaybackProjectCard key={item.id} item={item} onChange={(next) => updatePaybackItem(item.id, next)} onDelete={() => deletePaybackItem(item)} />)}</div>}
+    </section>}
+
+    {tab === 'savings' && <section className="finance-page departure-page">
+      <article className="card departure-settings-card">
+        <div className="card-heading"><div><span className="number">01</span><h2>Set the fixed starting point</h2></div><div className="fixed-savings-actions">{editingFixedSavings ? <><button type="button" className="quiet-button" onClick={cancelFixedSavingsEdit}>Cancel</button><button type="button" className="primary compact-button" onClick={saveFixedSavingsEdit}>Save amounts</button></> : <button type="button" className="quiet-button" onClick={beginFixedSavingsEdit}>Edit amounts</button>}<span className="count-pill">AUD</span></div></div>
+        <p className="finance-explainer">The opening balance is a historical marker. After setup, update only the current total through occasional savings snapshots.</p>
+        <div className="departure-settings-grid">
+          <label>Total brought into Australia{editingFixedSavings ? <MoneyInput ariaLabel="Departure savings target" value={fixedSavingsDraft.targetAmount} onCommit={(targetAmount) => setFixedSavingsDraft((current) => ({ ...current, targetAmount }))} /> : <strong className="locked-money-value">{aud(plan.targetAmount)}</strong>}</label>
+          <label>First-income date<input type="date" value={plan.openingDate} onChange={(event) => updatePlan({ openingDate: event.target.value })} /></label>
+          <label>Balance on that date{editingFixedSavings ? <MoneyInput ariaLabel="Opening savings balance" value={fixedSavingsDraft.openingBalance} onCommit={(openingBalance) => setFixedSavingsDraft((current) => ({ ...current, openingBalance }))} /> : <strong className="locked-money-value">{aud(plan.openingBalance)}</strong>}</label>
+        </div>
+      </article>
+
+      <article className="card departure-overview-card">
+        <div className="departure-total"><span>Current savings</span><strong>{aud(currentSavings)}</strong><small>{latestSnapshot ? `Latest snapshot · ${latestSnapshot.date}` : 'Using the fixed opening balance'}</small></div>
+        <div className="departure-breakdown">
+          <div><span>Opening balance</span><strong>{aud(plan.openingBalance)}</strong><small>{plan.openingDate || 'Date not set'} · fixed</small></div>
+          <div className={netChange < 0 ? 'negative' : 'positive'}><span>Net change since first income</span><strong>{netChange >= 0 ? '+' : '−'}{aud(Math.abs(netChange))}</strong><small>Current savings minus opening balance</small></div>
+          <div><span>Still needed</span><strong>{aud(remaining)}</strong><small>{progress.toFixed(1)}% of {aud(plan.targetAmount || 0)}</small></div>
+        </div>
+        <div className="departure-progress" role="progressbar" aria-label="Departure savings progress" aria-valuemin={0} aria-valuemax={plan.targetAmount || 100} aria-valuenow={currentSavings}>
+          <span className="opening-part" style={{ width: `${openingWidth}%` }} />
+          {builtWidth > 0 && <span className="built-part" style={{ left: `${openingMarker}%`, width: `${builtWidth}%` }} />}
+          {lossWidth > 0 && <span className="loss-part" style={{ left: `${Math.min(100, currentSavings / Math.max(1, plan.targetAmount) * 100)}%`, width: `${lossWidth}%` }} />}
+          {plan.targetAmount > 0 && <i className="opening-marker" style={{ left: `${openingMarker}%` }} />}
+        </div>
+        <div className="departure-legend"><span><i className="opening-key" />Opening balance</span><span><i className="built-key" />Built since first income</span>{netChange < 0 && <span><i className="loss-key" />Below opening balance</span>}</div>
+      </article>
+
+      <div className="departure-content-grid">
+        <article className="card savings-update-card">
+          <div className="card-heading"><div><span className="number">02</span><h2>Update current savings</h2></div><span className={`change-pill ${lastChange < 0 ? 'down' : 'up'}`}>{lastChange >= 0 ? '+' : '−'}{aud(Math.abs(lastChange))} since last</span></div>
+          <form className="savings-snapshot-form" onSubmit={addSnapshot}>
+            <input aria-label="Snapshot date" type="date" min={plan.openingDate || undefined} value={snapshotDate} onChange={(event) => setSnapshotDate(event.target.value)} />
+            <input aria-label="Current total savings" type="number" min="0" step="0.01" value={snapshotAmount} onChange={(event) => setSnapshotAmount(event.target.value)} placeholder="Current total savings" />
+            <input value={snapshotNote} onChange={(event) => setSnapshotNote(event.target.value)} placeholder="Optional note — e.g. Japan trip" />
+            <button className="primary">Save snapshot</button>
+          </form>
+          <p className="finance-explainer compact">Enter the real total occasionally. The difference captures salary, living costs, travel, and major spending without recording each transaction.</p>
+        </article>
+
+        <article className="card savings-trend-card">
+          <div className="card-heading"><div><span className="number">03</span><h2>Savings trend</h2></div><span className="count-pill">{snapshots.length} updates</span></div>
+          <SavingsTrend openingDate={plan.openingDate} openingBalance={plan.openingBalance} targetAmount={plan.targetAmount} snapshots={snapshots} />
+        </article>
+      </div>
+
+      <article className="card savings-history-card">
+        <div className="card-heading"><div><span className="number">04</span><h2>Snapshot history</h2></div><span className="count-pill">Latest balance drives the page</span></div>
+        {snapshots.length === 0 ? <p className="project-section-empty">No updates yet. The opening balance is currently used as Current Savings.</p> : <div className="savings-history-list">{[...snapshots].reverse().map((snapshot) => {
+          const change = snapshotChanges.get(snapshot.id) ?? 0
+          return <div key={snapshot.id}>
+            <input aria-label="Snapshot date" type="date" value={snapshot.date} onChange={(event) => updateSnapshot(snapshot.id, { date: event.target.value })} />
+            <MoneyInput ariaLabel={`${snapshot.date} savings amount`} value={snapshot.amount} onCommit={(amount) => updateSnapshot(snapshot.id, { amount })} />
+            <span className={change < 0 ? 'negative' : 'positive'}>{change >= 0 ? '+' : '−'}{aud(Math.abs(change))}</span>
+            <input value={snapshot.note ?? ''} onChange={(event) => updateSnapshot(snapshot.id, { note: event.target.value || undefined })} placeholder="Optional note" />
+            <button aria-label={`Delete ${snapshot.date} snapshot`} onClick={() => deleteSnapshot(snapshot)}>Delete</button>
+          </div>
+        })}</div>}
+      </article>
+    </section>}
+  </>
+}
+
+function PaybackProjectCard({ item, onChange, onDelete }: { item: InvestmentPaybackItem; onChange: (item: InvestmentPaybackItem) => void; onDelete: () => void }) {
+  const [costsExpanded, setCostsExpanded] = useState(false)
+  const [incomeExpanded, setIncomeExpanded] = useState(false)
+  const [costDate, setCostDate] = useState(localDate())
+  const [costAmount, setCostAmount] = useState('')
+  const [costCategory, setCostCategory] = useState<PaybackCostCategory>('other')
+  const [costNote, setCostNote] = useState('')
+  const [incomeDate, setIncomeDate] = useState(localDate())
+  const [incomeAmount, setIncomeAmount] = useState('')
+  const [incomeNote, setIncomeNote] = useState('')
+  const totalCost = item.costEntries.reduce((sum, entry) => sum + entry.amount, 0)
+  const totalIncome = item.incomeEntries.reduce((sum, entry) => sum + entry.amount, 0)
+  const ratio = totalCost > 0 ? totalIncome / totalCost * 100 : 0
+  const remaining = Math.max(0, totalCost - totalIncome)
+
+  function addCost(event: FormEvent) {
+    event.preventDefault()
+    const amount = Number(costAmount)
+    if (!costDate || !Number.isFinite(amount) || amount <= 0) return
+    const entry: PaybackCostEntry = { id: id(), date: costDate, amount, category: costCategory, note: costNote.trim() || undefined }
+    onChange({ ...item, costEntries: [...item.costEntries, entry] })
+    setCostAmount('')
+    setCostNote('')
+  }
+
+  function updateCost(entryId: string, patch: Partial<PaybackCostEntry>) {
+    onChange({ ...item, costEntries: item.costEntries.map((entry) => entry.id === entryId ? { ...entry, ...patch } : entry) })
+  }
+
+  function deleteCost(entry: PaybackCostEntry) {
+    if (!window.confirm(`Delete the ${entry.date || 'undated'} cost record?`)) return
+    onChange({ ...item, costEntries: item.costEntries.filter((current) => current.id !== entry.id) })
+  }
+
+  function addIncome(event: FormEvent) {
+    event.preventDefault()
+    const amount = Number(incomeAmount)
+    if (!incomeDate || !Number.isFinite(amount) || amount <= 0) return
+    const entry: PaybackIncomeEntry = { id: id(), date: incomeDate, amount, note: incomeNote.trim() || undefined }
+    onChange({ ...item, incomeEntries: [...item.incomeEntries, entry] })
+    setIncomeAmount('')
+    setIncomeNote('')
+  }
+
+  function updateIncome(entryId: string, patch: Partial<PaybackIncomeEntry>) {
+    onChange({ ...item, incomeEntries: item.incomeEntries.map((entry) => entry.id === entryId ? { ...entry, ...patch } : entry) })
+  }
+
+  function deleteIncome(entry: PaybackIncomeEntry) {
+    if (!window.confirm(`Delete the ${entry.date} income record?`)) return
+    onChange({ ...item, incomeEntries: item.incomeEntries.filter((current) => current.id !== entry.id) })
+  }
+
+  return <article className={`card payback-card ${ratio >= 100 ? 'covered' : ''}`}>
+    <div className="payback-card-heading">
+      <input aria-label="Payback project title" value={item.title} onChange={(event) => onChange({ ...item, title: event.target.value })} />
+      <span className={ratio >= 100 ? 'covered' : ''}>{ratio >= 100 ? '✓ Covered' : `${ratio.toFixed(1)}% covered`}</span>
+      <button onClick={onDelete}>Delete</button>
+    </div>
+    <div className="payback-metrics">
+      <div><span>Total investment</span><strong>{aud(totalCost)}</strong><small>{item.costEntries.length} cost {item.costEntries.length === 1 ? 'entry' : 'entries'}</small></div>
+      <div><span>Related take-home income</span><strong>{aud(totalIncome)}</strong></div>
+      <div><span>{remaining > 0 ? 'Still to cover' : 'Income beyond cost'}</span><strong>{aud(remaining > 0 ? remaining : totalIncome - totalCost)}</strong></div>
+    </div>
+    <div className="payback-progress"><span style={{ width: `${Math.min(100, ratio)}%` }} /></div>
+    <textarea rows={2} value={item.note ?? ''} onChange={(event) => onChange({ ...item, note: event.target.value || undefined })} placeholder="Optional context — what did this investment make possible?" />
+    <section className="payback-cost-section">
+      <button type="button" className="payback-section-toggle" aria-expanded={costsExpanded} onClick={() => setCostsExpanded((current) => !current)}>
+        <span><i>{costsExpanded ? '▾' : '▸'}</i>Cost details · {item.costEntries.length} {item.costEntries.length === 1 ? 'entry' : 'entries'}</span>
+        <strong>{aud(totalCost)}</strong>
+      </button>
+      {costsExpanded && <div className="payback-cost-content">
+        <form className="payback-cost-form" onSubmit={addCost}>
+          <input aria-label="Cost date" type="date" value={costDate} onChange={(event) => setCostDate(event.target.value)} />
+          <select aria-label="Cost type" value={costCategory} onChange={(event) => setCostCategory(event.target.value as PaybackCostCategory)}>
+            <option value="tuition">Tuition</option><option value="certificate">Certificate</option><option value="application">Application</option><option value="document">Document</option><option value="equipment">Equipment</option><option value="other">Other</option>
+          </select>
+          <input aria-label="Cost amount" type="number" min="0.01" step="0.01" value={costAmount} onChange={(event) => setCostAmount(event.target.value)} placeholder="Amount" />
+          <input value={costNote} onChange={(event) => setCostNote(event.target.value)} placeholder="What was this for?" />
+          <button>Add cost</button>
+        </form>
+        {item.costEntries.length === 0 ? <p className="project-section-empty">No costs recorded yet.</p> : <div className="payback-cost-list">{[...item.costEntries].sort((left, right) => right.date.localeCompare(left.date)).map((entry) => <div key={entry.id}>
+          <input aria-label="Cost date" type="date" value={entry.date} onChange={(event) => updateCost(entry.id, { date: event.target.value })} />
+          <select aria-label="Cost type" value={entry.category} onChange={(event) => updateCost(entry.id, { category: event.target.value as PaybackCostCategory })}>
+            <option value="tuition">Tuition</option><option value="certificate">Certificate</option><option value="application">Application</option><option value="document">Document</option><option value="equipment">Equipment</option><option value="other">Other</option>
+          </select>
+          <MoneyInput ariaLabel={`${entry.date || 'Undated'} cost amount`} value={entry.amount} onCommit={(amount) => updateCost(entry.id, { amount })} />
+          <input value={entry.note ?? ''} onChange={(event) => updateCost(entry.id, { note: event.target.value || undefined })} placeholder="Cost note" />
+          <button aria-label={`Delete ${entry.date || 'undated'} cost`} onClick={() => deleteCost(entry)}>×</button>
+        </div>)}</div>}
+      </div>}
+    </section>
+    <section className="payback-income-section">
+      <button type="button" className="payback-section-toggle" aria-expanded={incomeExpanded} onClick={() => setIncomeExpanded((current) => !current)}>
+        <span><i>{incomeExpanded ? '▾' : '▸'}</i>Income details · {item.incomeEntries.length} {item.incomeEntries.length === 1 ? 'entry' : 'entries'}</span>
+        <strong>{aud(totalIncome)}</strong>
+      </button>
+      {incomeExpanded && <div className="payback-income-content">
+        <form className="payback-income-form" onSubmit={addIncome}>
+          <input aria-label="Income date" type="date" value={incomeDate} onChange={(event) => setIncomeDate(event.target.value)} />
+          <input aria-label="Related take-home income" type="number" min="0.01" step="0.01" value={incomeAmount} onChange={(event) => setIncomeAmount(event.target.value)} placeholder="Take-home income" />
+          <input value={incomeNote} onChange={(event) => setIncomeNote(event.target.value)} placeholder="Job or note" />
+          <button>Add income</button>
+        </form>
+        {item.incomeEntries.length === 0 ? <p className="project-section-empty">No related income recorded yet.</p> : <div className="payback-income-list">{[...item.incomeEntries].sort((left, right) => right.date.localeCompare(left.date)).map((entry) => <div key={entry.id}>
+          <input aria-label="Income date" type="date" value={entry.date} onChange={(event) => updateIncome(entry.id, { date: event.target.value })} />
+          <MoneyInput ariaLabel={`${entry.date} income amount`} value={entry.amount} onCommit={(amount) => updateIncome(entry.id, { amount })} />
+          <input value={entry.note ?? ''} onChange={(event) => updateIncome(entry.id, { note: event.target.value || undefined })} placeholder="Job or note" />
+          <button aria-label={`Delete ${entry.date} income`} onClick={() => deleteIncome(entry)}>×</button>
+        </div>)}</div>}
+      </div>}
+    </section>
+  </article>
+}
+
+function SavingsTrend({ openingDate, openingBalance, targetAmount, snapshots }: { openingDate: string; openingBalance: number; targetAmount: number; snapshots: SavingsSnapshot[] }) {
+  const points = [
+    ...(openingDate ? [{ id: 'opening', date: openingDate, amount: openingBalance }] : []),
+    ...snapshots,
+  ].sort((left, right) => left.date.localeCompare(right.date))
+  if (points.length < 2) return <div className="trend-empty"><strong>Add another point to see the curve.</strong><span>The fixed opening balance counts as the first point once its date is set.</span></div>
+
+  const width = 680
+  const height = 190
+  const paddingX = 28
+  const paddingY = 22
+  const maxValue = Math.max(1, targetAmount, ...points.map((point) => point.amount))
+  const coords = points.map((point, index) => ({
+    ...point,
+    x: paddingX + index / Math.max(1, points.length - 1) * (width - paddingX * 2),
+    y: height - paddingY - point.amount / maxValue * (height - paddingY * 2),
+  }))
+  const targetY = height - paddingY - targetAmount / maxValue * (height - paddingY * 2)
+
+  return <div className="savings-trend-wrap">
+    <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Savings balance over time">
+      {targetAmount > 0 && <><line className="trend-target" x1={paddingX} x2={width - paddingX} y1={targetY} y2={targetY} /><text x={paddingX} y={Math.max(10, targetY - 5)}>Target {aud(targetAmount)}</text></>}
+      <polyline className="trend-line" points={coords.map((point) => `${point.x},${point.y}`).join(' ')} />
+      {coords.map((point) => <circle key={`${point.id}-${point.date}`} cx={point.x} cy={point.y} r="4"><title>{point.date}: {aud(point.amount)}</title></circle>)}
+    </svg>
+    <div className="trend-labels"><span>{points[0].date}<strong>{aud(points[0].amount)}</strong></span><span>{points.at(-1)?.date}<strong>{aud(points.at(-1)?.amount ?? 0)}</strong></span></div>
+  </div>
+}
+
+function MoneyInput({ value, ariaLabel, onCommit }: { value: number; ariaLabel: string; onCommit: (value: number) => void }) {
+  const [draft, setDraft] = useState(String(value))
+  useEffect(() => setDraft(String(value)), [value])
+
+  function commit() {
+    if (draft.trim() === '') {
+      setDraft(String(value))
+      return
+    }
+    const parsed = Number(draft)
+    if (!Number.isFinite(parsed)) {
+      setDraft(String(value))
+      return
+    }
+    const amount = Math.max(0, Math.round(parsed * 100) / 100)
+    onCommit(amount)
+    setDraft(String(amount))
+  }
+
+  return <input aria-label={ariaLabel} type="number" min="0" step="0.01" value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={commit} onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur() }} />
 }
 
 function FocusPage({ data, setData, setNotice }: {
